@@ -1,16 +1,32 @@
+# Python
 __pycache__/
 *.py[cod]
-.venv/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
 venv/
+.venv/
 env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Whisper models (large downloads)
 *.pt
-audio.mp3
-audio.webm
-audio.m4a
+
+# Audio temp files
 *.mp3
 *.wav
+*.m4a
+*.webm
+
+# Environment
 .env
-.env.*
-.DS_Store
-*.log
-dump.rdb
