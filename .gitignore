@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.pt
+audio.mp3
+audio.webm
+audio.m4a
+*.mp3
+*.wav
+.env
+.env.*
+.DS_Store
+*.log
+dump.rdb

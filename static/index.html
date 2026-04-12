@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Wulira — Hear every word, in every language</title>
+<meta name="description" content="Extract lyrics and transcripts from any YouTube video. Luganda, Kiswahili, English and 99 more languages."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset & tokens ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #0c0c0b;
+  --bg2:       #141413;
+  --bg3:       #1c1c1a;
+  --border:    rgba(255,255,255,.08);
+  --border2:   rgba(255,255,255,.14);
+  --text:      #f0ede8;
+  --muted:     #7a7870;
+  --muted2:    #4a4845;
+  --teal:      #1db87f;
+  --teal-dim:  #0f6e4e;
+  --teal-glow: rgba(29,184,127,.15);
+  --teal-bg:   rgba(29,184,127,.08);
+  --amber:     #e8a030;
+  --red:       #e05252;
+  --font-head: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --r:         12px;
+  --r-lg:      18px;
+}
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text);
+       min-height: 100vh; overflow-x: hidden; }
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+
+/* ── NAV ────────────────────────────────────────────────── */
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(12,12,11,.85); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.logo {
+  font-family: var(--font-head); font-size: 22px; font-weight: 800;
+  letter-spacing: -0.5px; color: var(--text); text-decoration: none;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal);
+            display: inline-block; animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+.nav-right { display: flex; align-items: center; gap: 1.5rem; }
+.nav-link { font-size: 13px; color: var(--muted); text-decoration: none; transition: color .2s; }
+.nav-link:hover { color: var(--text); }
+.nav-badge { font-size: 11px; background: var(--teal-bg); color: var(--teal);
+             border: 1px solid rgba(29,184,127,.2); padding: 4px 12px;
+             border-radius: 999px; font-weight: 500; }
+
+/* ── SCREENS ────────────────────────────────────────────── */
+.screen { display: none; min-height: calc(100vh - 65px); }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ── SCREEN 1 : HOME ────────────────────────────────────── */
+#s-home {
+  align-items: center; justify-content: center;
+  padding: 4rem 1.5rem; text-align: center;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(29,184,127,.07) 0%, transparent 70%);
+}
+.home-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--teal); letter-spacing: 1.5px;
+  text-transform: uppercase; font-weight: 600; margin-bottom: 1.5rem;
+}
+.home-tag::before, .home-tag::after {
+  content: ''; display: block; height: 1px; width: 24px; background: var(--teal-dim);
+}
+h1 {
+  font-family: var(--font-head); font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 800; letter-spacing: -2px; line-height: 1.08;
+  margin-bottom: 1.25rem; max-width: 700px;
+}
+h1 .accent { color: var(--teal); }
+.home-sub {
+  font-size: 17px; color: var(--muted); line-height: 1.7;
+  max-width: 460px; margin: 0 auto 3rem;
+  font-weight: 300;
+}
+.home-sub strong { color: var(--text); font-weight: 500; }
+
+/* URL input card */
+.input-card {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--r-lg); padding: 1.5rem;
+  width: 100%; max-width: 600px; margin: 0 auto 1.5rem;
+}
+.input-row {
+  display: flex; gap: 10px; align-items: stretch;
+}
+.url-input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 13px 16px;
+  font-family: var(--font-body); font-size: 14px; color: var(--text);
+  outline: none; transition: border-color .2s;
+  min-width: 0;
+}
+.url-input::placeholder { color: var(--muted2); }
+.url-input:focus { border-color: var(--teal); }
+.btn-go {
+  background: var(--teal); color: #000; font-family: var(--font-head);
+  font-size: 14px; font-weight: 700; padding: 13px 24px;
+  border: none; border-radius: var(--r); cursor: pointer;
+  white-space: nowrap; transition: background .2s, transform .1s;
+  letter-spacing: 0.3px;
+}
+.btn-go:hover { background: #22d492; }
+.btn-go:active { transform: scale(.97); }
+.btn-go:disabled { background: var(--teal-dim); color: rgba(0,0,0,.5); cursor: not-allowed; }
+
+/* model selector */
+.model-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 1rem; padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.model-label { font-size: 12px; color: var(--muted); }
+.model-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.model-btn {
+  font-size: 12px; padding: 4px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; font-family: var(--font-body);
+  transition: all .15s;
+}
+.model-btn:hover { border-color: var(--border2); color: var(--text); }
+.model-btn.active {
+  background: var(--teal-bg); border-color: rgba(29,184,127,.3);
+  color: var(--teal);
+}
+.lang-hint { margin-left: auto; }
+.lang-select {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 10px; color: var(--muted);
+  font-size: 12px; font-family: var(--font-body); outline: none;
+  cursor: pointer;
+}
+.lang-select:focus { border-color: var(--teal); }
+
+/* trust bar */
+.trust { display: flex; gap: 1.5rem; justify-content: center;
+         flex-wrap: wrap; margin-top: 0; }
+.trust-item { font-size: 13px; color: var(--muted); display: flex;
+              align-items: center; gap: 6px; }
+.trust-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); }
+
+/* ── SCREEN 2 : PROCESSING ──────────────────────────────── */
+#s-proc {
+  align-items: center; justify-content: center;
+  padding: 4rem 1.5rem; text-align: center;
+  background: radial-gradient(ellipse 50% 40% at 50% 20%, rgba(29,184,127,.06) 0%, transparent 65%);
+}
+.proc-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--bg2); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 1.5rem; font-size: 28px;
+  position: relative;
+}
+.proc-icon::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--teal);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.proc-title {
+  font-family: var(--font-head); font-size: 1.6rem; font-weight: 700;
+  letter-spacing: -0.5px; margin-bottom: 0.5rem;
+}
+.proc-sub { font-size: 14px; color: var(--muted); margin-bottom: 2.5rem; }
+.proc-step {
+  font-size: 13px; color: var(--teal); min-height: 20px;
+  transition: opacity .3s; margin-bottom: 2rem;
+}
+/* lang bars */
+.lang-bars {
+  width: 100%; max-width: 420px; margin: 0 auto 2.5rem;
+  text-align: left; display: none;
+}
+.lang-bars.show { display: block; }
+.lang-bar-title {
+  font-size: 11px; color: var(--muted); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 1rem;
+}
+.bar-item { margin-bottom: 10px; }
+.bar-meta { display: flex; justify-content: space-between;
+            font-size: 13px; margin-bottom: 4px; }
+.bar-name { color: var(--text); font-weight: 500; }
+.bar-pct  { color: var(--muted); }
+.bar-track {
+  height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden;
+}
+.bar-fill {
+  height: 100%; border-radius: 2px; background: var(--teal);
+  width: 0; transition: width .8s cubic-bezier(.16,1,.3,1);
+}
+.bar-fill.secondary { background: var(--muted2); }
+.detected-badge.hidden { display: none; }
+.detected-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--teal-bg); border: 1px solid rgba(29,184,127,.25);
+  color: var(--teal); font-size: 14px; font-weight: 600;
+  padding: 8px 20px; border-radius: 999px; margin-bottom: 1.5rem;
+}
+
+/* ── SCREEN 3 : RESULTS ─────────────────────────────────── */
+#s-result {
+  flex-direction: column; padding: 0;
+}
+.result-header {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.result-back {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-size: 13px; padding: 7px 14px;
+  border-radius: 8px; cursor: pointer; font-family: var(--font-body);
+  transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.result-back:hover { color: var(--text); border-color: var(--border2); }
+.result-meta { flex: 1; min-width: 0; }
+.result-title {
+  font-family: var(--font-head); font-size: 16px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: -0.3px;
+}
+.result-info { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.result-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag {
+  font-size: 11px; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--muted);
+  font-weight: 500;
+}
+.tag.teal { background: var(--teal-bg); border-color: rgba(29,184,127,.25); color: var(--teal); }
+.tag.amber { background: rgba(232,160,48,.08); border-color: rgba(232,160,48,.2); color: var(--amber); }
+.result-actions { display: flex; gap: 8px; }
+.btn-export {
+  font-size: 13px; padding: 8px 16px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; font-family: var(--font-body);
+  transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.btn-export:hover { color: var(--text); border-color: var(--border2); background: var(--bg2); }
+.btn-export.primary {
+  background: var(--teal); color: #000; border-color: var(--teal);
+  font-weight: 600;
+}
+.btn-export.primary:hover { background: #22d492; }
+
+/* transcript body */
+.transcript-body {
+  flex: 1; display: flex; overflow: hidden;
+}
+.transcript-main {
+  flex: 1; overflow-y: auto; padding: 1.5rem 2rem;
+}
+.transcript-sidebar {
+  width: 260px; border-left: 1px solid var(--border);
+  padding: 1.5rem; overflow-y: auto; flex-shrink: 0;
+}
+@media(max-width:700px){ .transcript-sidebar { display: none; } }
+
+/* search bar */
+.search-bar {
+  display: flex; gap: 8px; margin-bottom: 1.5rem;
+}
+.search-input {
+  flex: 1; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 9px 14px; font-family: var(--font-body);
+  font-size: 13px; color: var(--text); outline: none;
+  transition: border-color .2s;
+}
+.search-input:focus { border-color: var(--teal); }
+.search-input::placeholder { color: var(--muted2); }
+.search-count { font-size: 12px; color: var(--muted); align-self: center; padding: 0 6px; }
+
+/* lines */
+.line {
+  display: flex; gap: 14px; padding: 8px 12px; border-radius: 8px;
+  align-items: flex-start; transition: background .15s; margin-bottom: 2px;
+}
+.line:hover { background: var(--bg2); }
+.line.highlight { background: rgba(29,184,127,.1); }
+.line-ts {
+  font-size: 11px; color: var(--muted2); min-width: 38px;
+  padding-top: 3px; font-variant-numeric: tabular-nums;
+  cursor: pointer; font-family: var(--font-body);
+  transition: color .15s;
+}
+.line-ts:hover { color: var(--teal); }
+.line-text {
+  font-size: 15px; color: var(--text); line-height: 1.7;
+  font-weight: 300; flex: 1;
+}
+.line-text mark {
+  background: rgba(232,160,48,.25); color: var(--amber);
+  border-radius: 3px; padding: 0 2px;
+}
+.no-lines { text-align: center; padding: 3rem; color: var(--muted); font-size: 14px; }
+
+/* sidebar */
+.sidebar-section { margin-bottom: 2rem; }
+.sidebar-label {
+  font-size: 11px; color: var(--muted); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 0.75rem; font-weight: 600;
+}
+.sidebar-stat {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-stat:last-child { border-bottom: none; }
+.stat-key { color: var(--muted); }
+.stat-val { color: var(--text); font-weight: 500; }
+
+/* mini lang bars in sidebar */
+.mini-bar { margin-bottom: 8px; }
+.mini-bar-meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+.mini-bar-name { color: var(--text); }
+.mini-bar-pct  { color: var(--muted); }
+.mini-track { height: 3px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+.mini-fill { height: 100%; border-radius: 2px; background: var(--teal); }
+.mini-fill.sec { background: var(--muted2); }
+
+/* ── TOAST ──────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(8px);
+  background: var(--bg2); border: 1px solid var(--border2);
+  color: var(--text); font-size: 13px; padding: 10px 20px;
+  border-radius: 999px; opacity: 0; pointer-events: none;
+  transition: all .3s; z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── UTILS ──────────────────────────────────────────────── */
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="logo" onclick="goHome()">
+    <span class="logo-dot"></span> Wulira
+  </a>
+  <div class="nav-right">
+    <a href="https://github.com/YOUR_USERNAME/wulira" class="nav-link" target="_blank" rel="noopener">GitHub</a>
+    <a href="#" class="nav-link">API</a>
+    <span class="nav-badge">🇺🇬 Made in Kampala</span>
+  </div>
+</nav>
+
+<!-- ── SCREEN 1: HOME ─────────────────────────────────── -->
+<div class="screen active" id="s-home">
+  <div class="home-tag">Hear every word</div>
+  <h1>Lyrics & transcripts<br/>in <span class="accent">any language</span></h1>
+  <p class="home-sub">
+    Paste any YouTube URL — Wulira detects the language automatically and extracts the full transcript.
+    Works on videos with <strong>no captions</strong> too.
+  </p>
+
+  <div class="input-card">
+    <div class="input-row">
+      <input class="url-input" id="urlInput" type="text"
+             placeholder="Paste a YouTube URL…"
+             autocomplete="off" spellcheck="false"/>
+      <button class="btn-go" id="goBtn" onclick="handleGo()">Wulira →</button>
+    </div>
+    <div class="model-row">
+      <span class="model-label">Model:</span>
+      <div class="model-btns" id="modelBtns">
+        <button class="model-btn" data-m="tiny">tiny</button>
+        <button class="model-btn active" data-m="base">base</button>
+        <button class="model-btn" data-m="small">small</button>
+        <button class="model-btn" data-m="medium">medium ⭐</button>
+        <button class="model-btn" data-m="large">large</button>
+      </div>
+      <div class="lang-hint">
+        <select class="lang-select" id="langHint" aria-label="Language hint">
+          <option value="">Auto-detect language</option>
+          <option value="lg">🇺🇬 Luganda</option>
+          <option value="sw">🇹🇿 Kiswahili</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="fr">French</option>
+          <option value="ar">Arabic</option>
+          <option value="hi">Hindi</option>
+          <option value="yo">Yoruba</option>
+          <option value="ha">Hausa</option>
+          <option value="rw">Kinyarwanda</option>
+          <option value="am">Amharic</option>
+          <option value="so">Somali</option>
+          <option value="es">Spanish</option>
+          <option value="pt">Portuguese</option>
+          <option value="de">German</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="trust">
+    <div class="trust-item"><span class="dot"></span> Auto language detection</div>
+    <div class="trust-item"><span class="dot"></span> Works without captions</div>
+    <div class="trust-item"><span class="dot"></span> 99+ languages</div>
+    <div class="trust-item"><span class="dot"></span> Free to use</div>
+  </div>
+</div>
+
+<!-- ── SCREEN 2: PROCESSING ──────────────────────────────── -->
+<div class="screen" id="s-proc">
+  <div class="proc-icon" id="procIcon">🎵</div>
+  <h2 class="proc-title" id="procTitle">Downloading audio…</h2>
+  <p class="proc-sub" id="procSub">This may take a moment for longer videos</p>
+  <div class="proc-step" id="procStep"></div>
+
+  <div class="lang-bars" id="langBars">
+    <p class="lang-bar-title">Language detection</p>
+    <div id="barList"></div>
+    <div class="detected-badge hidden" id="detectedBadge"></div>
+  </div>
+</div>
+
+<!-- ── SCREEN 3: RESULTS ──────────────────────────────────── -->
+<div class="screen" id="s-result">
+  <div class="result-header">
+    <button class="result-back" onclick="goHome()">← New video</button>
+    <div class="result-meta">
+      <div class="result-title" id="rTitle">—</div>
+      <div class="result-info" id="rInfo">—</div>
+    </div>
+    <div class="result-tags" id="rTags"></div>
+    <div class="result-actions">
+      <button class="btn-export" onclick="exportTxt()">Export .txt</button>
+      <button class="btn-export" onclick="exportSrt()">Export .srt</button>
+      <button class="btn-export primary" onclick="copyAll()">Copy all</button>
+    </div>
+  </div>
+
+  <div class="transcript-body">
+    <div class="transcript-main">
+      <div class="search-bar">
+        <input class="search-input" id="searchInput" placeholder="Search lyrics…" oninput="filterLines()"/>
+        <span class="search-count" id="searchCount"></span>
+      </div>
+      <div id="linesList"></div>
+    </div>
+
+    <div class="transcript-sidebar">
+      <div class="sidebar-section">
+        <p class="sidebar-label">Video info</p>
+        <div id="sideStats"></div>
+      </div>
+      <div class="sidebar-section" id="sideDetectSection">
+        <p class="sidebar-label">Language detection</p>
+        <div id="sideLangBars"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const API_BASE = window.location.origin;   // same origin as the FastAPI backend
+let currentLines = [];
+let allLines     = [];
+let langResults  = [];
+let videoMeta    = {};
+let selectedModel = 'base';
+
+// ── Model buttons ──────────────────────────────────────────
+document.querySelectorAll('.model-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedModel = btn.dataset.m;
+  });
+});
+
+// ── URL input enter key ────────────────────────────────────
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleGo();
+});
+
+// ── Helpers ────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function toast(msg, dur = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function fmt(sec) {
+  const s = Math.floor(sec), m = Math.floor(s / 60), ss = s % 60;
+  return m + ':' + (ss < 10 ? '0' : '') + ss;
+}
+
+function fmtDuration(sec) {
+  if (!sec) return '—';
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s}s`;
+}
+
+function extractId(url) {
+  url = url.trim();
+  let m = url.match(/[?&]v=([^&]+)/); if (m) return m[1];
+  m = url.match(/youtu\.be\/([^?]+)/); if (m) return m[1];
+  m = url.match(/shorts\/([^?]+)/);   if (m) return m[1];
+  if (/^[A-Za-z0-9_-]{11}$/.test(url)) return url;
+  return null;
+}
+
+function goHome() {
+  showScreen('s-home');
+  document.getElementById('urlInput').value = '';
+  document.getElementById('goBtn').disabled = false;
+  currentLines = []; allLines = []; langResults = []; videoMeta = {};
+}
+
+// ── Main flow ──────────────────────────────────────────────
+async function handleGo() {
+  const url   = document.getElementById('urlInput').value.trim();
+  const lang  = document.getElementById('langHint').value;
+  const model = selectedModel;
+
+  if (!url) { toast('Paste a YouTube URL first'); return; }
+  const vid = extractId(url);
+  if (!vid) { toast('Could not find a valid YouTube video ID'); return; }
+
+  document.getElementById('goBtn').disabled = true;
+  showScreen('s-proc');
+  resetProcScreen();
+
+  // Try YouTube captions first (fast path), then fall back to API
+  const captionResult = await tryCaptions(vid);
+  if (captionResult) {
+    renderResults(captionResult);
+    return;
+  }
+
+  // No captions — use the Wulira API (Whisper)
+  await useWuliraAPI(url, lang, model);
+}
+
+// ── Fast path: YouTube captions ────────────────────────────
+async function tryCaptions(vid) {
+  setProc('Checking for captions…', 'Looking for existing subtitle tracks');
+  try {
+    const proxy = 'https://corsproxy.io/?' + encodeURIComponent('https://www.youtube.com/watch?v=' + vid);
+    const res   = await fetch(proxy);
+    if (!res.ok) return null;
+    const html  = await res.text();
+
+    // Extract video title
+    const titleMatch = html.match(/"title":"([^"]+)"/);
+    const title = titleMatch ? titleMatch[1].replace(/\\u[\dA-F]{4}/gi, c =>
+      String.fromCharCode(parseInt(c.replace(/\\u/,''), 16))) : 'YouTube Video';
+
+    const match = html.match(/"captionTracks":(\[.*?\])/);
+    if (!match) return null;
+
+    const tracks = JSON.parse(match[1]);
+    if (!tracks.length) return null;
+
+    // Pick best track: prefer user's languages
+    const PREF = ['lg','sw','en'];
+    const sorted = [...tracks].sort((a,b) => {
+      const ca = PREF.indexOf((a.languageCode||'').split('-')[0]);
+      const cb = PREF.indexOf((b.languageCode||'').split('-')[0]);
+      return (ca === -1 ? 99 : ca) - (cb === -1 ? 99 : cb);
+    });
+    const track = sorted[0];
+
+    setProc('Loading transcript…', `Found caption track: ${track.name?.simpleText || track.languageCode}`);
+    document.getElementById('langBars').classList.add('show');
+    document.getElementById('barList').innerHTML = `
+      <div class="bar-item">
+        <div class="bar-meta">
+          <span class="bar-name">${track.name?.simpleText || track.languageCode}</span>
+          <span class="bar-pct">captions</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+      </div>`;
+    const badge = document.getElementById('detectedBadge');
+    badge.textContent = '✓ ' + (track.name?.simpleText || track.languageCode);
+    badge.classList.remove('hidden');
+
+    const capRes = await fetch('https://corsproxy.io/?' + encodeURIComponent(track.baseUrl + '&fmt=json3'));
+    if (!capRes.ok) return null;
+    const data = await capRes.json();
+
+    const lines = [];
+    for (const ev of data.events || []) {
+      if (!ev.segs) continue;
+      const text = ev.segs.map(s => s.utf8 || '').join('').replace(/\n/g,' ').trim();
+      if (text) lines.push({ start: ev.tStartMs / 1000, end: (ev.tStartMs + (ev.dDurationMs||3000)) / 1000, text });
+    }
+    if (!lines.length) return null;
+
+    return {
+      title,
+      uploader: '',
+      duration: 0,
+      language_detected: track.name?.simpleText || track.languageCode,
+      language_code: track.languageCode,
+      language_confidence: 100,
+      language_top5: [{ name: track.name?.simpleText || track.languageCode, confidence: 100 }],
+      transcript: lines,
+      source: 'captions',
+    };
+  } catch { return null; }
+}
+
+// ── Slow path: Wulira API ──────────────────────────────────
+async function useWuliraAPI(url, lang, model) {
+  setProc('Submitting to Wulira AI…', 'No captions found — transcribing the audio directly');
+  try {
+    const submitRes = await fetch(API_BASE + '/api/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, language: lang || null, model })
+    });
+    if (!submitRes.ok) {
+      const err = await submitRes.json().catch(() => ({}));
+      throw new Error(err.detail || 'API error ' + submitRes.status);
+    }
+    const { job_id } = await submitRes.json();
+
+    // Poll
+    const steps = [
+      'Downloading audio…',
+      'Loading Whisper model…',
+      'Detecting language…',
+      'Transcribing audio…',
+      'Almost done…',
+    ];
+    let stepIdx = 0;
+    const stepInterval = setInterval(() => {
+      if (stepIdx < steps.length) {
+        document.getElementById('procStep').textContent = steps[stepIdx++];
+      }
+    }, 4000);
+
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      const pollRes = await fetch(API_BASE + '/api/job/' + job_id);
+      const job = await pollRes.json();
+
+      if (job.status === 'done') {
+        clearInterval(stepInterval);
+        // Show lang detection
+        if (job.language_top5) showLangBars(job.language_top5, job.language_detected);
+        await new Promise(r => setTimeout(r, 1200));
+        renderResults(job);
+        return;
+      }
+      if (job.status === 'error') {
+        clearInterval(stepInterval);
+        throw new Error(job.error || 'Transcription failed');
+      }
+    }
+    clearInterval(stepInterval);
+    throw new Error('Timed out. Try a shorter video or a smaller model.');
+  } catch (e) {
+    showScreen('s-home');
+    toast('Error: ' + e.message, 4000);
+    document.getElementById('goBtn').disabled = false;
+  }
+}
+
+// ── Proc screen helpers ────────────────────────────────────
+function resetProcScreen() {
+  document.getElementById('procTitle').textContent = 'Listening…';
+  document.getElementById('procSub').textContent = 'This may take a moment';
+  document.getElementById('procStep').textContent = '';
+  document.getElementById('langBars').classList.remove('show');
+  document.getElementById('barList').innerHTML = '';
+  document.getElementById('detectedBadge').classList.add('hidden');
+}
+
+function setProc(title, sub) {
+  document.getElementById('procTitle').textContent = title;
+  document.getElementById('procSub').textContent = sub;
+}
+
+function showLangBars(top5, detected) {
+  document.getElementById('langBars').classList.add('show');
+  const list = document.getElementById('barList');
+  list.innerHTML = '';
+  top5.forEach((item, i) => {
+    const pct = item.confidence || 0;
+    const d = document.createElement('div');
+    d.className = 'bar-item';
+    d.innerHTML = `
+      <div class="bar-meta">
+        <span class="bar-name">${item.name || item.code || '?'}</span>
+        <span class="bar-pct">${pct.toFixed(1)}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill${i > 0 ? ' secondary' : ''}" style="width:0" data-w="${pct}"></div>
+      </div>`;
+    list.appendChild(d);
+  });
+  // Animate bars
+  setTimeout(() => {
+    list.querySelectorAll('.bar-fill').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 100);
+
+  const badge = document.getElementById('detectedBadge');
+  badge.textContent = '✓ Detected: ' + detected;
+  badge.classList.remove('hidden');
+}
+
+// ── Render results ─────────────────────────────────────────
+function renderResults(job) {
+  allLines = currentLines = job.transcript || [];
+  videoMeta = job;
+  langResults = job.language_top5 || [];
+
+  // Header
+  document.getElementById('rTitle').textContent = job.title || 'YouTube Video';
+  document.getElementById('rInfo').textContent = [
+    job.uploader, fmtDuration(job.duration), allLines.length + ' lines'
+  ].filter(Boolean).join(' · ');
+
+  // Tags
+  const tagsEl = document.getElementById('rTags');
+  tagsEl.innerHTML = '';
+  if (job.language_detected) {
+    const t = document.createElement('span');
+    t.className = 'tag teal';
+    t.textContent = job.language_detected;
+    tagsEl.appendChild(t);
+  }
+  const src = document.createElement('span');
+  src.className = 'tag amber';
+  src.textContent = job.source === 'captions' ? 'Captions' : 'AI transcribed';
+  tagsEl.appendChild(src);
+
+  // Sidebar stats
+  document.getElementById('sideStats').innerHTML = [
+    ['Language', job.language_detected || '—'],
+    ['Confidence', job.language_confidence ? job.language_confidence + '%' : '—'],
+    ['Lines', allLines.length],
+    ['Duration', fmtDuration(job.duration)],
+    ['Source', job.source === 'captions' ? 'YouTube captions' : 'Whisper AI'],
+    ['Model', job.model || (job.source === 'captions' ? '—' : selectedModel)],
+  ].map(([k,v]) => `<div class="sidebar-stat"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`).join('');
+
+  // Sidebar lang bars
+  const sdb = document.getElementById('sideLangBars');
+  sdb.innerHTML = '';
+  langResults.forEach((item, i) => {
+    sdb.innerHTML += `<div class="mini-bar">
+      <div class="mini-bar-meta">
+        <span class="mini-bar-name">${item.name||item.code||'?'}</span>
+        <span class="mini-bar-pct">${(item.confidence||0).toFixed(1)}%</span>
+      </div>
+      <div class="mini-track">
+        <div class="mini-fill${i>0?' sec':''}" style="width:${item.confidence||0}%"></div>
+      </div>
+    </div>`;
+  });
+
+  renderLines(allLines);
+  showScreen('s-result');
+}
+
+function renderLines(lines) {
+  const el = document.getElementById('linesList');
+  if (!lines.length) {
+    el.innerHTML = '<div class="no-lines">No lines to display.</div>';
+    return;
+  }
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  el.innerHTML = lines.map((l, i) => {
+    let text = l.text.replace(/</g, '&lt;');
+    if (q) {
+      const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+      text = text.replace(re, m => `<mark>${m}</mark>`);
+    }
+    return `<div class="line" id="line-${i}">
+      <span class="line-ts" title="Jump to timestamp">${fmt(l.start)}</span>
+      <span class="line-text">${text}</span>
+    </div>`;
+  }).join('');
+}
+
+function filterLines() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!q) {
+    currentLines = allLines;
+    document.getElementById('searchCount').textContent = '';
+  } else {
+    currentLines = allLines.filter(l => l.text.toLowerCase().includes(q));
+    document.getElementById('searchCount').textContent = currentLines.length + ' found';
+  }
+  renderLines(currentLines);
+}
+
+// ── Exports ────────────────────────────────────────────────
+function copyAll() {
+  const text = allLines.map(l => `[${fmt(l.start)}]  ${l.text}`).join('\n');
+  navigator.clipboard.writeText(text)
+    .then(() => toast('Copied to clipboard'))
+    .catch(() => toast('Could not copy — please select manually'));
+}
+
+function exportTxt() {
+  const header = [
+    'Title    : ' + (videoMeta.title || ''),
+    'Language : ' + (videoMeta.language_detected || ''),
+    'Lines    : ' + allLines.length,
+    '-'.repeat(60),
+  ].join('\n');
+  const body = allLines.map(l => `[${fmt(l.start)}]  ${l.text}`).join('\n');
+  download('wulira-transcript.txt', header + '\n' + body);
+  toast('Downloaded .txt file');
+}
+
+function exportSrt() {
+  const srt = allLines.map((l, i) => {
+    const s = fmtSrt(l.start), e = fmtSrt(l.end || l.start + 3);
+    return `${i+1}\n${s} --> ${e}\n${l.text}\n`;
+  }).join('\n');
+  download('wulira-transcript.srt', srt);
+  toast('Downloaded .srt file');
+}
+
+function fmtSrt(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const ms = Math.round((sec - Math.floor(sec)) * 1000);
+  return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':') + ',' + String(ms).padStart(3,'0');
+}
+
+function download(filename, text) {
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+  a.download = filename;
+  a.click();
+}
+</script>
+</body>
+</html>
