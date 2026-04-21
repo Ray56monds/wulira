@@ -251,9 +251,10 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 - [x] Persistent job storage (Redis)
 - [x] API key authentication
 - [x] Real-time WebSocket updates
-- [x] Translation support (argostranslate)
+- [x] Translation support (Luganda → English + 100 languages)
 - [x] Lyrics database export (all 6 formats)
-- [ ] Mobile app (Android)
+- [x] Mobile app (Android — Expo/React Native)
+- [ ] iOS app
 
 ---
 
@@ -262,10 +263,11 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 - **[LYRICS_FEATURES.md](LYRICS_FEATURES.md)** — Complete guide to all lyrics features
 - **[API_REFERENCE.md](API_REFERENCE.md)** — Full API endpoint documentation
 - **[IMPROVEMENTS.md](IMPROVEMENTS.md)** — Technical improvements & security
-- [ ] Luganda → English translation
-- [ ] Batch processing
-- [ ] Wulira API with key authentication
-- [ ] Mobile app (Android)
+- [x] Luganda → English translation
+- [x] Batch processing
+- [x] Wulira API with key authentication
+- [x] Mobile app (Android)
+- [ ] iOS app
 
 ---
 

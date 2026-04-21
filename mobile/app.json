@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Wulira",
+    "slug": "wulira",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "backgroundColor": "#0a0a0f"
+    },
+    "android": {
+      "package": "app.wulira.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#6c5ce7"
+      }
+    },
+    "plugins": ["expo-clipboard"]
+  }
+}
