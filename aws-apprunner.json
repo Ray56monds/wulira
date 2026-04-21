@@ -1,0 +1,79 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Wulira API — deployed on AWS App Runner",
+    "Parameters": {
+        "GeniusApiToken": {
+            "Type": "String",
+            "Default": "",
+            "NoEcho": true,
+            "Description": "Genius API token for lyrics database lookups (optional)"
+        },
+        "ImageUri": {
+            "Type": "String",
+            "Description": "ECR image URI (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/wulira:latest)"
+        }
+    },
+    "Resources": {
+        "WuliraService": {
+            "Type": "AWS::AppRunner::Service",
+            "Properties": {
+                "ServiceName": "wulira-api",
+                "SourceConfiguration": {
+                    "AuthenticationConfiguration": {
+                        "AccessRoleArn": { "Fn::GetAtt": ["AppRunnerECRRole", "Arn"] }
+                    },
+                    "ImageRepository": {
+                        "ImageIdentifier": { "Ref": "ImageUri" },
+                        "ImageRepositoryType": "ECR",
+                        "ImageConfiguration": {
+                            "Port": "8000",
+                            "RuntimeEnvironmentVariables": [
+                                { "Name": "ENV", "Value": "production" },
+                                { "Name": "CORS_ORIGINS", "Value": "*" },
+                                { "Name": "LOG_LEVEL", "Value": "INFO" },
+                                { "Name": "MAX_JOBS_IN_MEMORY", "Value": "50" },
+                                { "Name": "GENIUS_API_TOKEN", "Value": { "Ref": "GeniusApiToken" } }
+                            ]
+                        }
+                    }
+                },
+                "InstanceConfiguration": {
+                    "Cpu": "2 vCPU",
+                    "Memory": "4 GB"
+                },
+                "HealthCheckConfiguration": {
+                    "Protocol": "HTTP",
+                    "Path": "/api/health",
+                    "Interval": 20,
+                    "Timeout": 5,
+                    "HealthyThreshold": 1,
+                    "UnhealthyThreshold": 3
+                }
+            }
+        },
+        "AppRunnerECRRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": { "Service": "build.apprunner.amazonaws.com" },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "ServiceUrl": {
+            "Value": { "Fn::GetAtt": ["WuliraService", "ServiceUrl"] },
+            "Description": "Wulira API URL"
+        }
+    }
+}

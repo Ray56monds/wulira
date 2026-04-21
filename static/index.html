@@ -1,870 +1,506 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wulira — Hear every word, in every language</title>
-<meta name="description" content="Extract lyrics and transcripts from any YouTube video. Luganda, Kiswahili, English and 99 more languages."/>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
 <style>
-/* ── Reset & tokens ─────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg:        #0c0c0b;
-  --bg2:       #141413;
-  --bg3:       #1c1c1a;
-  --border:    rgba(255,255,255,.08);
-  --border2:   rgba(255,255,255,.14);
-  --text:      #f0ede8;
-  --muted:     #7a7870;
-  --muted2:    #4a4845;
-  --teal:      #1db87f;
-  --teal-dim:  #0f6e4e;
-  --teal-glow: rgba(29,184,127,.15);
-  --teal-bg:   rgba(29,184,127,.08);
-  --amber:     #e8a030;
-  --red:       #e05252;
-  --font-head: 'Syne', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
-  --r:         12px;
-  --r-lg:      18px;
-}
-html { scroll-behavior: smooth; }
-body { font-family: var(--font-body); background: var(--bg); color: var(--text);
-       min-height: 100vh; overflow-x: hidden; }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a3a;--accent:#6c5ce7;--accent2:#a29bfe;--green:#00b894;--red:#e17055;--yellow:#fdcb6e;--text:#e0e0e0;--text2:#888;--radius:10px}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+a{color:var(--accent2);text-decoration:none}
+.container{max-width:960px;margin:0 auto;padding:20px}
 
-/* ── Scrollbar ──────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg2); }
-::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+/* Header */
+header{text-align:center;padding:30px 0 20px;border-bottom:1px solid var(--border)}
+header h1{font-size:2rem;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+header p{color:var(--text2);margin-top:4px;font-size:.9rem}
 
-/* ── NAV ────────────────────────────────────────────────── */
-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem 2rem;
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(12,12,11,.85); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-}
-.logo {
-  font-family: var(--font-head); font-size: 22px; font-weight: 800;
-  letter-spacing: -0.5px; color: var(--text); text-decoration: none;
-  display: flex; align-items: center; gap: 8px;
-}
-.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal);
-            display: inline-block; animation: pulse 2.4s ease-in-out infinite; }
-@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
-.nav-right { display: flex; align-items: center; gap: 1.5rem; }
-.nav-link { font-size: 13px; color: var(--muted); text-decoration: none; transition: color .2s; }
-.nav-link:hover { color: var(--text); }
-.nav-badge { font-size: 11px; background: var(--teal-bg); color: var(--teal);
-             border: 1px solid rgba(29,184,127,.2); padding: 4px 12px;
-             border-radius: 999px; font-weight: 500; }
+/* Tabs */
+.tabs{display:flex;gap:4px;margin:20px 0;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:10px 20px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:.2s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent2);border-bottom-color:var(--accent)}
+.panel{display:none}
+.panel.active{display:block}
 
-/* ── SCREENS ────────────────────────────────────────────── */
-.screen { display: none; min-height: calc(100vh - 65px); }
-.screen.active { display: flex; flex-direction: column; }
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card h3{font-size:1rem;margin-bottom:12px;color:var(--accent2)}
 
-/* ── SCREEN 1 : HOME ────────────────────────────────────── */
-#s-home {
-  align-items: center; justify-content: center;
-  padding: 4rem 1.5rem; text-align: center;
-  background:
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(29,184,127,.07) 0%, transparent 70%);
-}
-.home-tag {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; color: var(--teal); letter-spacing: 1.5px;
-  text-transform: uppercase; font-weight: 600; margin-bottom: 1.5rem;
-}
-.home-tag::before, .home-tag::after {
-  content: ''; display: block; height: 1px; width: 24px; background: var(--teal-dim);
-}
-h1 {
-  font-family: var(--font-head); font-size: clamp(2.8rem, 6vw, 5rem);
-  font-weight: 800; letter-spacing: -2px; line-height: 1.08;
-  margin-bottom: 1.25rem; max-width: 700px;
-}
-h1 .accent { color: var(--teal); }
-.home-sub {
-  font-size: 17px; color: var(--muted); line-height: 1.7;
-  max-width: 460px; margin: 0 auto 3rem;
-  font-weight: 300;
-}
-.home-sub strong { color: var(--text); font-weight: 500; }
+/* Form */
+.form-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.form-row input,.form-row select{flex:1;min-width:120px;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:.9rem}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--accent)}
+.btn{padding:10px 24px;border:none;border-radius:var(--radius);cursor:pointer;font-size:.9rem;font-weight:600;transition:.2s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-sm{padding:6px 14px;font-size:.8rem}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent2)}
+.btn-danger{background:var(--red);color:#fff}
 
-/* URL input card */
-.input-card {
-  background: var(--bg2); border: 1px solid var(--border2);
-  border-radius: var(--r-lg); padding: 1.5rem;
-  width: 100%; max-width: 600px; margin: 0 auto 1.5rem;
-}
-.input-row {
-  display: flex; gap: 10px; align-items: stretch;
-}
-.url-input {
-  flex: 1; background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 13px 16px;
-  font-family: var(--font-body); font-size: 14px; color: var(--text);
-  outline: none; transition: border-color .2s;
-  min-width: 0;
-}
-.url-input::placeholder { color: var(--muted2); }
-.url-input:focus { border-color: var(--teal); }
-.btn-go {
-  background: var(--teal); color: #000; font-family: var(--font-head);
-  font-size: 14px; font-weight: 700; padding: 13px 24px;
-  border: none; border-radius: var(--r); cursor: pointer;
-  white-space: nowrap; transition: background .2s, transform .1s;
-  letter-spacing: 0.3px;
-}
-.btn-go:hover { background: #22d492; }
-.btn-go:active { transform: scale(.97); }
-.btn-go:disabled { background: var(--teal-dim); color: rgba(0,0,0,.5); cursor: not-allowed; }
+/* Status badges */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600}
+.badge-queued{background:#2d3436;color:var(--yellow)}
+.badge-processing{background:#0c2461;color:#74b9ff}
+.badge-done{background:#0a3d2e;color:var(--green)}
+.badge-error{background:#3d1010;color:var(--red)}
 
-/* model selector */
-.model-row {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  margin-top: 1rem; padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-.model-label { font-size: 12px; color: var(--muted); }
-.model-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.model-btn {
-  font-size: 12px; padding: 4px 12px; border-radius: 6px;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--muted); cursor: pointer; font-family: var(--font-body);
-  transition: all .15s;
-}
-.model-btn:hover { border-color: var(--border2); color: var(--text); }
-.model-btn.active {
-  background: var(--teal-bg); border-color: rgba(29,184,127,.3);
-  color: var(--teal);
-}
-.lang-hint { margin-left: auto; }
-.lang-select {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 6px; padding: 4px 10px; color: var(--muted);
-  font-size: 12px; font-family: var(--font-body); outline: none;
-  cursor: pointer;
-}
-.lang-select:focus { border-color: var(--teal); }
+/* Job list */
+.job-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:.15s}
+.job-item:hover{background:var(--surface2)}
+.job-item:last-child{border-bottom:none}
+.job-meta{flex:1;margin:0 16px}
+.job-meta .title{font-weight:600;font-size:.9rem}
+.job-meta .sub{color:var(--text2);font-size:.8rem;margin-top:2px}
 
-/* trust bar */
-.trust { display: flex; gap: 1.5rem; justify-content: center;
-         flex-wrap: wrap; margin-top: 0; }
-.trust-item { font-size: 13px; color: var(--muted); display: flex;
-              align-items: center; gap: 6px; }
-.trust-item .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); }
+/* Lyrics viewer */
+.lyrics-box{max-height:400px;overflow-y:auto;padding:16px;background:var(--surface2);border-radius:var(--radius);font-size:.9rem;line-height:1.8}
+.lyrics-box .line{padding:2px 8px;border-radius:4px;transition:.15s}
+.lyrics-box .line:hover{background:rgba(108,92,231,.15)}
+.lyrics-box .line .ts{color:var(--accent2);font-size:.75rem;margin-right:8px;font-family:monospace}
+.lyrics-box .line.chorus{border-left:3px solid var(--accent);padding-left:12px}
+.lyrics-box .line.highlight{background:rgba(253,203,110,.15)}
 
-/* ── SCREEN 2 : PROCESSING ──────────────────────────────── */
-#s-proc {
-  align-items: center; justify-content: center;
-  padding: 4rem 1.5rem; text-align: center;
-  background: radial-gradient(ellipse 50% 40% at 50% 20%, rgba(29,184,127,.06) 0%, transparent 65%);
-}
-.proc-icon {
-  width: 64px; height: 64px; border-radius: 50%;
-  background: var(--bg2); border: 1px solid var(--border2);
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 1.5rem; font-size: 28px;
-  position: relative;
-}
-.proc-icon::after {
-  content: ''; position: absolute; inset: -4px; border-radius: 50%;
-  border: 2px solid transparent;
-  border-top-color: var(--teal);
-  animation: spin 1s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.proc-title {
-  font-family: var(--font-head); font-size: 1.6rem; font-weight: 700;
-  letter-spacing: -0.5px; margin-bottom: 0.5rem;
-}
-.proc-sub { font-size: 14px; color: var(--muted); margin-bottom: 2.5rem; }
-.proc-step {
-  font-size: 13px; color: var(--teal); min-height: 20px;
-  transition: opacity .3s; margin-bottom: 2rem;
-}
-/* lang bars */
-.lang-bars {
-  width: 100%; max-width: 420px; margin: 0 auto 2.5rem;
-  text-align: left; display: none;
-}
-.lang-bars.show { display: block; }
-.lang-bar-title {
-  font-size: 11px; color: var(--muted); letter-spacing: 1px;
-  text-transform: uppercase; margin-bottom: 1rem;
-}
-.bar-item { margin-bottom: 10px; }
-.bar-meta { display: flex; justify-content: space-between;
-            font-size: 13px; margin-bottom: 4px; }
-.bar-name { color: var(--text); font-weight: 500; }
-.bar-pct  { color: var(--muted); }
-.bar-track {
-  height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden;
-}
-.bar-fill {
-  height: 100%; border-radius: 2px; background: var(--teal);
-  width: 0; transition: width .8s cubic-bezier(.16,1,.3,1);
-}
-.bar-fill.secondary { background: var(--muted2); }
-.detected-badge.hidden { display: none; }
-.detected-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--teal-bg); border: 1px solid rgba(29,184,127,.25);
-  color: var(--teal); font-size: 14px; font-weight: 600;
-  padding: 8px 20px; border-radius: 999px; margin-bottom: 1.5rem;
-}
+/* Progress bar */
+.progress{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:10px 0}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .3s;border-radius:3px}
 
-/* ── SCREEN 3 : RESULTS ─────────────────────────────────── */
-#s-result {
-  flex-direction: column; padding: 0;
-}
-.result-header {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 1.25rem 2rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg2);
-}
-.result-back {
-  background: transparent; border: 1px solid var(--border);
-  color: var(--muted); font-size: 13px; padding: 7px 14px;
-  border-radius: 8px; cursor: pointer; font-family: var(--font-body);
-  transition: all .15s; display: flex; align-items: center; gap: 6px;
-}
-.result-back:hover { color: var(--text); border-color: var(--border2); }
-.result-meta { flex: 1; min-width: 0; }
-.result-title {
-  font-family: var(--font-head); font-size: 16px; font-weight: 700;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  letter-spacing: -0.3px;
-}
-.result-info { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.result-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-.tag {
-  font-size: 11px; padding: 3px 10px; border-radius: 999px;
-  border: 1px solid var(--border); color: var(--muted);
-  font-weight: 500;
-}
-.tag.teal { background: var(--teal-bg); border-color: rgba(29,184,127,.25); color: var(--teal); }
-.tag.amber { background: rgba(232,160,48,.08); border-color: rgba(232,160,48,.2); color: var(--amber); }
-.result-actions { display: flex; gap: 8px; }
-.btn-export {
-  font-size: 13px; padding: 8px 16px; border-radius: 8px;
-  border: 1px solid var(--border); background: transparent;
-  color: var(--muted); cursor: pointer; font-family: var(--font-body);
-  transition: all .15s; display: flex; align-items: center; gap: 6px;
-}
-.btn-export:hover { color: var(--text); border-color: var(--border2); background: var(--bg2); }
-.btn-export.primary {
-  background: var(--teal); color: #000; border-color: var(--teal);
-  font-weight: 600;
-}
-.btn-export.primary:hover { background: #22d492; }
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.stat{text-align:center;padding:16px;background:var(--surface2);border-radius:var(--radius)}
+.stat .val{font-size:1.5rem;font-weight:700;color:var(--accent2)}
+.stat .label{font-size:.75rem;color:var(--text2);margin-top:4px}
 
-/* transcript body */
-.transcript-body {
-  flex: 1; display: flex; overflow: hidden;
-}
-.transcript-main {
-  flex: 1; overflow-y: auto; padding: 1.5rem 2rem;
-}
-.transcript-sidebar {
-  width: 260px; border-left: 1px solid var(--border);
-  padding: 1.5rem; overflow-y: auto; flex-shrink: 0;
-}
-@media(max-width:700px){ .transcript-sidebar { display: none; } }
+/* Search */
+.search-results .result{padding:10px;border-left:3px solid var(--accent);margin-bottom:8px;background:var(--surface2);border-radius:0 var(--radius) var(--radius) 0}
+.search-results .result .ctx{color:var(--text2);font-size:.8rem}
 
-/* search bar */
-.search-bar {
-  display: flex; gap: 8px; margin-bottom: 1.5rem;
-}
-.search-input {
-  flex: 1; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 9px 14px; font-family: var(--font-body);
-  font-size: 13px; color: var(--text); outline: none;
-  transition: border-color .2s;
-}
-.search-input:focus { border-color: var(--teal); }
-.search-input::placeholder { color: var(--muted2); }
-.search-count { font-size: 12px; color: var(--muted); align-self: center; padding: 0 6px; }
+/* Translation */
+.translated-line{display:flex;gap:12px;padding:4px 0;border-bottom:1px solid var(--border)}
+.translated-line .orig{flex:1;color:var(--text2);font-size:.85rem}
+.translated-line .trans{flex:1;font-size:.85rem}
 
-/* lines */
-.line {
-  display: flex; gap: 14px; padding: 8px 12px; border-radius: 8px;
-  align-items: flex-start; transition: background .15s; margin-bottom: 2px;
-}
-.line:hover { background: var(--bg2); }
-.line.highlight { background: rgba(29,184,127,.1); }
-.line-ts {
-  font-size: 11px; color: var(--muted2); min-width: 38px;
-  padding-top: 3px; font-variant-numeric: tabular-nums;
-  cursor: pointer; font-family: var(--font-body);
-  transition: color .15s;
-}
-.line-ts:hover { color: var(--teal); }
-.line-text {
-  font-size: 15px; color: var(--text); line-height: 1.7;
-  font-weight: 300; flex: 1;
-}
-.line-text mark {
-  background: rgba(232,160,48,.25); color: var(--amber);
-  border-radius: 3px; padding: 0 2px;
-}
-.no-lines { text-align: center; padding: 3rem; color: var(--muted); font-size: 14px; }
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:.85rem;z-index:999;animation:slideIn .3s}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-/* sidebar */
-.sidebar-section { margin-bottom: 2rem; }
-.sidebar-label {
-  font-size: 11px; color: var(--muted); letter-spacing: 1px;
-  text-transform: uppercase; margin-bottom: 0.75rem; font-weight: 600;
-}
-.sidebar-stat {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 13px; padding: 6px 0;
-  border-bottom: 1px solid var(--border);
-}
-.sidebar-stat:last-child { border-bottom: none; }
-.stat-key { color: var(--muted); }
-.stat-val { color: var(--text); font-weight: 500; }
-
-/* mini lang bars in sidebar */
-.mini-bar { margin-bottom: 8px; }
-.mini-bar-meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
-.mini-bar-name { color: var(--text); }
-.mini-bar-pct  { color: var(--muted); }
-.mini-track { height: 3px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-.mini-fill { height: 100%; border-radius: 2px; background: var(--teal); }
-.mini-fill.sec { background: var(--muted2); }
-
-/* ── TOAST ──────────────────────────────────────────────── */
-.toast {
-  position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(8px);
-  background: var(--bg2); border: 1px solid var(--border2);
-  color: var(--text); font-size: 13px; padding: 10px 20px;
-  border-radius: 999px; opacity: 0; pointer-events: none;
-  transition: all .3s; z-index: 999;
-}
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-/* ── UTILS ──────────────────────────────────────────────── */
-.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+/* Responsive */
+@media(max-width:600px){.form-row{flex-direction:column}.tabs{overflow-x:auto}.container{padding:12px}}
 </style>
 </head>
 <body>
+<div class="container">
 
-<nav>
-  <a href="#" class="logo" onclick="goHome()">
-    <span class="logo-dot"></span> Wulira
-  </a>
-  <div class="nav-right">
-    <a href="https://github.com/YOUR_USERNAME/wulira" class="nav-link" target="_blank" rel="noopener">GitHub</a>
-    <a href="#" class="nav-link">API</a>
-    <span class="nav-badge">🇺🇬 Made in Kampala</span>
-  </div>
-</nav>
+<header>
+  <h1>🎵 Wulira</h1>
+  <p>Hear every word, in every language · Made in Uganda 🇺🇬</p>
+</header>
 
-<!-- ── SCREEN 1: HOME ─────────────────────────────────── -->
-<div class="screen active" id="s-home">
-  <div class="home-tag">Hear every word</div>
-  <h1>Lyrics & transcripts<br/>in <span class="accent">any language</span></h1>
-  <p class="home-sub">
-    Paste any YouTube URL — Wulira detects the language automatically and extracts the full transcript.
-    Works on videos with <strong>no captions</strong> too.
-  </p>
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="submit">Submit</div>
+  <div class="tab" data-tab="jobs">Jobs</div>
+  <div class="tab" data-tab="viewer">Lyrics</div>
+  <div class="tab" data-tab="translate">Translate</div>
+  <div class="tab" data-tab="stats">Stats</div>
+</div>
 
-  <div class="input-card">
-    <div class="input-row">
-      <input class="url-input" id="urlInput" type="text"
-             placeholder="Paste a YouTube URL…"
-             autocomplete="off" spellcheck="false"/>
-      <button class="btn-go" id="goBtn" onclick="handleGo()">Wulira →</button>
+<!-- Submit Panel -->
+<div id="submit" class="panel active">
+  <div class="card">
+    <h3>🎤 Extract Lyrics</h3>
+    <div class="form-row">
+      <input type="text" id="url" placeholder="Paste YouTube URL..." autofocus>
     </div>
-    <div class="model-row">
-      <span class="model-label">Model:</span>
-      <div class="model-btns" id="modelBtns">
-        <button class="model-btn" data-m="tiny">tiny</button>
-        <button class="model-btn active" data-m="base">base</button>
-        <button class="model-btn" data-m="small">small</button>
-        <button class="model-btn" data-m="medium">medium ⭐</button>
-        <button class="model-btn" data-m="large">large</button>
-      </div>
-      <div class="lang-hint">
-        <select class="lang-select" id="langHint" aria-label="Language hint">
-          <option value="">Auto-detect language</option>
-          <option value="lg">🇺🇬 Luganda</option>
-          <option value="sw">🇹🇿 Kiswahili</option>
-          <option value="en">🇬🇧 English</option>
-          <option value="fr">French</option>
-          <option value="ar">Arabic</option>
-          <option value="hi">Hindi</option>
-          <option value="yo">Yoruba</option>
-          <option value="ha">Hausa</option>
-          <option value="rw">Kinyarwanda</option>
-          <option value="am">Amharic</option>
-          <option value="so">Somali</option>
-          <option value="es">Spanish</option>
-          <option value="pt">Portuguese</option>
-          <option value="de">German</option>
+    <div class="form-row">
+      <select id="model">
+        <option value="base">base (fast)</option>
+        <option value="tiny">tiny (fastest)</option>
+        <option value="small">small (better)</option>
+        <option value="medium">medium (best for Luganda/Swahili)</option>
+        <option value="large">large (most accurate)</option>
+      </select>
+      <select id="language">
+        <option value="">Auto-detect</option>
+        <option value="lg">Luganda</option>
+        <option value="sw">Kiswahili</option>
+        <option value="en">English</option>
+        <option value="fr">French</option>
+        <option value="ar">Arabic</option>
+        <option value="es">Spanish</option>
+        <option value="de">German</option>
+        <option value="hi">Hindi</option>
+        <option value="yo">Yoruba</option>
+        <option value="ha">Hausa</option>
+        <option value="am">Amharic</option>
+        <option value="rw">Kinyarwanda</option>
+      </select>
+      <button class="btn btn-primary" onclick="submitJob()">Extract</button>
+    </div>
+    <div id="submit-progress" style="display:none">
+      <div class="progress"><div class="progress-bar" id="pbar" style="width:0%"></div></div>
+      <p id="pstage" style="font-size:.8rem;color:var(--text2);text-align:center"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📦 Batch Submit</h3>
+    <div class="form-row">
+      <input type="text" id="batch-urls" placeholder="Paste multiple URLs, one per line or comma-separated">
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="submitBatch()">Submit Batch</button>
+  </div>
+</div>
+
+<!-- Jobs Panel -->
+<div id="jobs" class="panel">
+  <div class="card">
+    <h3>📋 Recent Jobs</h3>
+    <div id="job-list"><p style="color:var(--text2)">Loading...</p></div>
+  </div>
+</div>
+
+<!-- Lyrics Viewer Panel -->
+<div id="viewer" class="panel">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 id="viewer-title">Select a job to view lyrics</h3>
+      <div style="display:flex;gap:6px">
+        <select id="export-fmt" class="btn btn-outline btn-sm" style="padding:6px 10px">
+          <option value="txt">TXT</option>
+          <option value="srt">SRT</option>
+          <option value="lrc">LRC</option>
+          <option value="vtt">VTT</option>
+          <option value="json">JSON</option>
+          <option value="csv">CSV</option>
         </select>
+        <button class="btn btn-outline btn-sm" onclick="exportLyrics()">⬇ Export</button>
       </div>
     </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <input type="text" id="search-q" placeholder="Search lyrics..." oninput="searchLyrics()">
+    </div>
+    <div id="lyrics-content" class="lyrics-box">
+      <p style="color:var(--text2)">No lyrics loaded</p>
+    </div>
+    <div id="search-results" class="search-results" style="margin-top:12px"></div>
   </div>
-
-  <div class="trust">
-    <div class="trust-item"><span class="dot"></span> Auto language detection</div>
-    <div class="trust-item"><span class="dot"></span> Works without captions</div>
-    <div class="trust-item"><span class="dot"></span> 99+ languages</div>
-    <div class="trust-item"><span class="dot"></span> Free to use</div>
+  <div class="card" id="viewer-info" style="display:none">
+    <h3>ℹ️ Info</h3>
+    <div id="viewer-meta"></div>
   </div>
 </div>
 
-<!-- ── SCREEN 2: PROCESSING ──────────────────────────────── -->
-<div class="screen" id="s-proc">
-  <div class="proc-icon" id="procIcon">🎵</div>
-  <h2 class="proc-title" id="procTitle">Downloading audio…</h2>
-  <p class="proc-sub" id="procSub">This may take a moment for longer videos</p>
-  <div class="proc-step" id="procStep"></div>
-
-  <div class="lang-bars" id="langBars">
-    <p class="lang-bar-title">Language detection</p>
-    <div id="barList"></div>
-    <div class="detected-badge hidden" id="detectedBadge"></div>
+<!-- Translate Panel -->
+<div id="translate" class="panel">
+  <div class="card">
+    <h3>🌍 Translate Lyrics</h3>
+    <div class="form-row">
+      <select id="translate-to">
+        <option value="en">English</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="de">German</option>
+        <option value="ar">Arabic</option>
+        <option value="sw">Kiswahili</option>
+        <option value="zh">Chinese</option>
+        <option value="ja">Japanese</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="translateLyrics()">Translate</button>
+    </div>
+    <div id="translate-status" style="margin:10px 0;font-size:.85rem;color:var(--text2)"></div>
+    <div id="translate-output"></div>
   </div>
 </div>
 
-<!-- ── SCREEN 3: RESULTS ──────────────────────────────────── -->
-<div class="screen" id="s-result">
-  <div class="result-header">
-    <button class="result-back" onclick="goHome()">← New video</button>
-    <div class="result-meta">
-      <div class="result-title" id="rTitle">—</div>
-      <div class="result-info" id="rInfo">—</div>
-    </div>
-    <div class="result-tags" id="rTags"></div>
-    <div class="result-actions">
-      <button class="btn-export" onclick="exportTxt()">Export .txt</button>
-      <button class="btn-export" onclick="exportSrt()">Export .srt</button>
-      <button class="btn-export primary" onclick="copyAll()">Copy all</button>
-    </div>
+<!-- Stats Panel -->
+<div id="stats" class="panel">
+  <div class="card">
+    <h3>📊 API Statistics</h3>
+    <div id="api-stats" class="stats-grid"></div>
   </div>
-
-  <div class="transcript-body">
-    <div class="transcript-main">
-      <div class="search-bar">
-        <input class="search-input" id="searchInput" placeholder="Search lyrics…" oninput="filterLines()"/>
-        <span class="search-count" id="searchCount"></span>
-      </div>
-      <div id="linesList"></div>
-    </div>
-
-    <div class="transcript-sidebar">
-      <div class="sidebar-section">
-        <p class="sidebar-label">Video info</p>
-        <div id="sideStats"></div>
-      </div>
-      <div class="sidebar-section" id="sideDetectSection">
-        <p class="sidebar-label">Language detection</p>
-        <div id="sideLangBars"></div>
-      </div>
-    </div>
+  <div class="card" id="lyrics-stats-card" style="display:none">
+    <h3>🎵 Lyrics Statistics</h3>
+    <div id="lyrics-stats" class="stats-grid"></div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+</div><!-- /container -->
 
 <script>
-// ── State ──────────────────────────────────────────────────
-const API_BASE = window.location.origin;   // same origin as the FastAPI backend
-let currentLines = [];
-let allLines     = [];
-let langResults  = [];
-let videoMeta    = {};
-let selectedModel = 'base';
+const API = window.location.origin;
+let currentJobId = null;
+let currentJob = null;
+let ws = null;
 
-// ── Model buttons ──────────────────────────────────────────
-document.querySelectorAll('.model-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedModel = btn.dataset.m;
+// Tab switching
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'jobs') loadJobs();
+    if (t.dataset.tab === 'stats') loadStats();
   });
 });
 
-// ── URL input enter key ────────────────────────────────────
-document.getElementById('urlInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') handleGo();
-});
-
-// ── Helpers ────────────────────────────────────────────────
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-function toast(msg, dur = 2500) {
-  const el = document.getElementById('toast');
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
   el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), dur);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
 }
 
-function fmt(sec) {
-  const s = Math.floor(sec), m = Math.floor(s / 60), ss = s % 60;
-  return m + ':' + (ss < 10 ? '0' : '') + ss;
+function badge(status) {
+  return `<span class="badge badge-${status}">${status}</span>`;
 }
 
-function fmtDuration(sec) {
-  if (!sec) return '—';
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m ${s}s`;
-}
-
-function extractId(url) {
-  url = url.trim();
-  let m = url.match(/[?&]v=([^&]+)/); if (m) return m[1];
-  m = url.match(/youtu\.be\/([^?]+)/); if (m) return m[1];
-  m = url.match(/shorts\/([^?]+)/);   if (m) return m[1];
-  if (/^[A-Za-z0-9_-]{11}$/.test(url)) return url;
-  return null;
-}
-
-function goHome() {
-  showScreen('s-home');
-  document.getElementById('urlInput').value = '';
-  document.getElementById('goBtn').disabled = false;
-  currentLines = []; allLines = []; langResults = []; videoMeta = {};
-}
-
-// ── Main flow ──────────────────────────────────────────────
-async function handleGo() {
-  const url   = document.getElementById('urlInput').value.trim();
-  const lang  = document.getElementById('langHint').value;
-  const model = selectedModel;
-
-  if (!url) { toast('Paste a YouTube URL first'); return; }
-  const vid = extractId(url);
-  if (!vid) { toast('Could not find a valid YouTube video ID'); return; }
-
-  document.getElementById('goBtn').disabled = true;
-  showScreen('s-proc');
-  resetProcScreen();
-
-  // Try YouTube captions first (fast path), then fall back to API
-  const captionResult = await tryCaptions(vid);
-  if (captionResult) {
-    renderResults(captionResult);
-    return;
-  }
-
-  // No captions — use the Wulira API (Whisper)
-  await useWuliraAPI(url, lang, model);
-}
-
-// ── Fast path: YouTube captions ────────────────────────────
-async function tryCaptions(vid) {
-  setProc('Checking for captions…', 'Looking for existing subtitle tracks');
+// Submit job
+async function submitJob() {
+  const url = document.getElementById('url').value.trim();
+  if (!url) return toast('Paste a YouTube URL');
+  const body = {
+    url,
+    model: document.getElementById('model').value,
+    language: document.getElementById('language').value || null,
+  };
   try {
-    const proxy = 'https://corsproxy.io/?' + encodeURIComponent('https://www.youtube.com/watch?v=' + vid);
-    const res   = await fetch(proxy);
-    if (!res.ok) return null;
-    const html  = await res.text();
-
-    // Extract video title
-    const titleMatch = html.match(/"title":"([^"]+)"/);
-    const title = titleMatch ? titleMatch[1].replace(/\\u[\dA-F]{4}/gi, c =>
-      String.fromCharCode(parseInt(c.replace(/\\u/,''), 16))) : 'YouTube Video';
-
-    const match = html.match(/"captionTracks":(\[.*?\])/);
-    if (!match) return null;
-
-    const tracks = JSON.parse(match[1]);
-    if (!tracks.length) return null;
-
-    // Pick best track: prefer user's languages
-    const PREF = ['lg','sw','en'];
-    const sorted = [...tracks].sort((a,b) => {
-      const ca = PREF.indexOf((a.languageCode||'').split('-')[0]);
-      const cb = PREF.indexOf((b.languageCode||'').split('-')[0]);
-      return (ca === -1 ? 99 : ca) - (cb === -1 ? 99 : cb);
-    });
-    const track = sorted[0];
-
-    setProc('Loading transcript…', `Found caption track: ${track.name?.simpleText || track.languageCode}`);
-    document.getElementById('langBars').classList.add('show');
-    document.getElementById('barList').innerHTML = `
-      <div class="bar-item">
-        <div class="bar-meta">
-          <span class="bar-name">${track.name?.simpleText || track.languageCode}</span>
-          <span class="bar-pct">captions</span>
-        </div>
-        <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
-      </div>`;
-    const badge = document.getElementById('detectedBadge');
-    badge.textContent = '✓ ' + (track.name?.simpleText || track.languageCode);
-    badge.classList.remove('hidden');
-
-    const capRes = await fetch('https://corsproxy.io/?' + encodeURIComponent(track.baseUrl + '&fmt=json3'));
-    if (!capRes.ok) return null;
-    const data = await capRes.json();
-
-    const lines = [];
-    for (const ev of data.events || []) {
-      if (!ev.segs) continue;
-      const text = ev.segs.map(s => s.utf8 || '').join('').replace(/\n/g,' ').trim();
-      if (text) lines.push({ start: ev.tStartMs / 1000, end: (ev.tStartMs + (ev.dDurationMs||3000)) / 1000, text });
-    }
-    if (!lines.length) return null;
-
-    return {
-      title,
-      uploader: '',
-      duration: 0,
-      language_detected: track.name?.simpleText || track.languageCode,
-      language_code: track.languageCode,
-      language_confidence: 100,
-      language_top5: [{ name: track.name?.simpleText || track.languageCode, confidence: 100 }],
-      transcript: lines,
-      source: 'captions',
-    };
-  } catch { return null; }
-}
-
-// ── Slow path: Wulira API ──────────────────────────────────
-async function useWuliraAPI(url, lang, model) {
-  setProc('Submitting to Wulira AI…', 'No captions found — transcribing the audio directly');
-  try {
-    const submitRes = await fetch(API_BASE + '/api/transcribe', {
+    const res = await fetch(`${API}/api/transcribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, language: lang || null, model })
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
     });
-    if (!submitRes.ok) {
-      const err = await submitRes.json().catch(() => ({}));
-      throw new Error(err.detail || 'API error ' + submitRes.status);
-    }
-    const { job_id } = await submitRes.json();
-
-    // Poll
-    const steps = [
-      'Downloading audio…',
-      'Loading Whisper model…',
-      'Detecting language…',
-      'Transcribing audio…',
-      'Almost done…',
-    ];
-    let stepIdx = 0;
-    const stepInterval = setInterval(() => {
-      if (stepIdx < steps.length) {
-        document.getElementById('procStep').textContent = steps[stepIdx++];
-      }
-    }, 4000);
-
-    for (let i = 0; i < 120; i++) {
-      await new Promise(r => setTimeout(r, 3000));
-      const pollRes = await fetch(API_BASE + '/api/job/' + job_id);
-      const job = await pollRes.json();
-
-      if (job.status === 'done') {
-        clearInterval(stepInterval);
-        // Show lang detection
-        if (job.language_top5) showLangBars(job.language_top5, job.language_detected);
-        await new Promise(r => setTimeout(r, 1200));
-        renderResults(job);
-        return;
-      }
-      if (job.status === 'error') {
-        clearInterval(stepInterval);
-        throw new Error(job.error || 'Transcription failed');
-      }
-    }
-    clearInterval(stepInterval);
-    throw new Error('Timed out. Try a shorter video or a smaller model.');
-  } catch (e) {
-    showScreen('s-home');
-    toast('Error: ' + e.message, 4000);
-    document.getElementById('goBtn').disabled = false;
-  }
+    const data = await res.json();
+    if (!res.ok) return toast(data.detail || 'Error');
+    toast(`Job queued: ${data.job_id.slice(0,8)}...`);
+    currentJobId = data.job_id;
+    connectWS(data.job_id);
+    document.getElementById('submit-progress').style.display = 'block';
+  } catch (e) { toast('Network error'); }
 }
 
-// ── Proc screen helpers ────────────────────────────────────
-function resetProcScreen() {
-  document.getElementById('procTitle').textContent = 'Listening…';
-  document.getElementById('procSub').textContent = 'This may take a moment';
-  document.getElementById('procStep').textContent = '';
-  document.getElementById('langBars').classList.remove('show');
-  document.getElementById('barList').innerHTML = '';
-  document.getElementById('detectedBadge').classList.add('hidden');
-}
-
-function setProc(title, sub) {
-  document.getElementById('procTitle').textContent = title;
-  document.getElementById('procSub').textContent = sub;
-}
-
-function showLangBars(top5, detected) {
-  document.getElementById('langBars').classList.add('show');
-  const list = document.getElementById('barList');
-  list.innerHTML = '';
-  top5.forEach((item, i) => {
-    const pct = item.confidence || 0;
-    const d = document.createElement('div');
-    d.className = 'bar-item';
-    d.innerHTML = `
-      <div class="bar-meta">
-        <span class="bar-name">${item.name || item.code || '?'}</span>
-        <span class="bar-pct">${pct.toFixed(1)}%</span>
-      </div>
-      <div class="bar-track">
-        <div class="bar-fill${i > 0 ? ' secondary' : ''}" style="width:0" data-w="${pct}"></div>
-      </div>`;
-    list.appendChild(d);
-  });
-  // Animate bars
-  setTimeout(() => {
-    list.querySelectorAll('.bar-fill').forEach(el => {
-      el.style.width = el.dataset.w + '%';
+// Batch submit
+async function submitBatch() {
+  const raw = document.getElementById('batch-urls').value.trim();
+  if (!raw) return toast('Paste URLs');
+  const urls = raw.split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
+  try {
+    const res = await fetch(`${API}/api/batch-transcribe`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ urls, model: document.getElementById('model').value }),
     });
-  }, 100);
-
-  const badge = document.getElementById('detectedBadge');
-  badge.textContent = '✓ Detected: ' + detected;
-  badge.classList.remove('hidden');
+    const data = await res.json();
+    if (!res.ok) return toast(data.detail || 'Error');
+    toast(`Batch queued: ${data.count} jobs`);
+  } catch (e) { toast('Network error'); }
 }
 
-// ── Render results ─────────────────────────────────────────
-function renderResults(job) {
-  allLines = currentLines = job.transcript || [];
-  videoMeta = job;
-  langResults = job.language_top5 || [];
-
-  // Header
-  document.getElementById('rTitle').textContent = job.title || 'YouTube Video';
-  document.getElementById('rInfo').textContent = [
-    job.uploader, fmtDuration(job.duration), allLines.length + ' lines'
-  ].filter(Boolean).join(' · ');
-
-  // Tags
-  const tagsEl = document.getElementById('rTags');
-  tagsEl.innerHTML = '';
-  if (job.language_detected) {
-    const t = document.createElement('span');
-    t.className = 'tag teal';
-    t.textContent = job.language_detected;
-    tagsEl.appendChild(t);
-  }
-  const src = document.createElement('span');
-  src.className = 'tag amber';
-  src.textContent = job.source === 'captions' ? 'Captions' : 'AI transcribed';
-  tagsEl.appendChild(src);
-
-  // Sidebar stats
-  document.getElementById('sideStats').innerHTML = [
-    ['Language', job.language_detected || '—'],
-    ['Confidence', job.language_confidence ? job.language_confidence + '%' : '—'],
-    ['Lines', allLines.length],
-    ['Duration', fmtDuration(job.duration)],
-    ['Source', job.source === 'captions' ? 'YouTube captions' : 'Whisper AI'],
-    ['Model', job.model || (job.source === 'captions' ? '—' : selectedModel)],
-  ].map(([k,v]) => `<div class="sidebar-stat"><span class="stat-key">${k}</span><span class="stat-val">${v}</span></div>`).join('');
-
-  // Sidebar lang bars
-  const sdb = document.getElementById('sideLangBars');
-  sdb.innerHTML = '';
-  langResults.forEach((item, i) => {
-    sdb.innerHTML += `<div class="mini-bar">
-      <div class="mini-bar-meta">
-        <span class="mini-bar-name">${item.name||item.code||'?'}</span>
-        <span class="mini-bar-pct">${(item.confidence||0).toFixed(1)}%</span>
-      </div>
-      <div class="mini-track">
-        <div class="mini-fill${i>0?' sec':''}" style="width:${item.confidence||0}%"></div>
-      </div>
-    </div>`;
-  });
-
-  renderLines(allLines);
-  showScreen('s-result');
+// WebSocket live progress
+function connectWS(jobId) {
+  if (ws) ws.close();
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/job/${jobId}`);
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    const pbar = document.getElementById('pbar');
+    const pstage = document.getElementById('pstage');
+    const stages = {queued:'Queued...',downloading:'Downloading audio...',detecting_language:'Detecting language...',transcribing:'Extracting lyrics...',done:'✓ Complete!'};
+    pstage.textContent = stages[d.stage] || d.stage;
+    pbar.style.width = (d.progress || 0) + '%';
+    if (d.stage === 'done') {
+      setTimeout(() => {
+        loadJob(jobId);
+        document.querySelector('[data-tab="viewer"]').click();
+      }, 500);
+    }
+  };
+  ws.onerror = () => {};
 }
 
-function renderLines(lines) {
-  const el = document.getElementById('linesList');
-  if (!lines.length) {
-    el.innerHTML = '<div class="no-lines">No lines to display.</div>';
+// Load jobs list
+async function loadJobs() {
+  try {
+    const res = await fetch(`${API}/api/jobs`);
+    if (!res.ok) { document.getElementById('job-list').innerHTML = '<p style="color:var(--text2)">No jobs yet</p>'; return; }
+    const data = await res.json();
+    const list = data.jobs || [];
+    if (!list.length) { document.getElementById('job-list').innerHTML = '<p style="color:var(--text2)">No jobs yet</p>'; return; }
+    document.getElementById('job-list').innerHTML = list.map(j => `
+      <div class="job-item" onclick="loadJob('${j.job_id}'); document.querySelector('[data-tab=viewer]').click();">
+        <div>${badge(j.status)}</div>
+        <div class="job-meta">
+          <div class="title">${j.title || j.job_id.slice(0,12)}</div>
+          <div class="sub">${j.language_detected || ''} · ${j.lyrics_source || ''} · ${j.created_at ? new Date(j.created_at).toLocaleString() : ''}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); deleteJob('${j.job_id}')">✕</button>
+      </div>
+    `).join('');
+  } catch { document.getElementById('job-list').innerHTML = '<p style="color:var(--text2)">Could not load jobs</p>'; }
+}
+
+// Load single job into viewer
+async function loadJob(jobId) {
+  try {
+    const res = await fetch(`${API}/api/job/${jobId}`);
+    if (!res.ok) return toast('Job not found');
+    currentJob = await res.json();
+    currentJobId = jobId;
+    renderLyrics(currentJob);
+    loadLyricsStats(jobId);
+  } catch { toast('Error loading job'); }
+}
+
+// Render lyrics
+function renderLyrics(job) {
+  document.getElementById('viewer-title').textContent = job.title || 'Untitled';
+  const segs = job.transcript || [];
+  if (!segs.length) {
+    document.getElementById('lyrics-content').innerHTML = '<p style="color:var(--text2)">No lyrics found</p>';
     return;
   }
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  el.innerHTML = lines.map((l, i) => {
-    let text = l.text.replace(/</g, '&lt;');
-    if (q) {
-      const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
-      text = text.replace(re, m => `<mark>${m}</mark>`);
-    }
-    return `<div class="line" id="line-${i}">
-      <span class="line-ts" title="Jump to timestamp">${fmt(l.start)}</span>
-      <span class="line-text">${text}</span>
-    </div>`;
+  document.getElementById('lyrics-content').innerHTML = segs.map((s, i) => {
+    const ts = s.start != null ? `<span class="ts">${fmtTime(s.start)}</span>` : '';
+    return `<div class="line" data-idx="${i}">${ts}${escHtml(s.text)}</div>`;
   }).join('');
+
+  // Show info
+  document.getElementById('viewer-info').style.display = 'block';
+  document.getElementById('viewer-meta').innerHTML = `
+    <p><b>Artist:</b> ${escHtml(job.uploader || '?')}</p>
+    <p><b>Language:</b> ${escHtml(job.language_detected || '?')} (${job.language_confidence || 0}%)</p>
+    <p><b>Source:</b> ${escHtml(job.lyrics_source || 'whisper')}</p>
+    <p><b>Duration:</b> ${fmtTime(job.duration || 0)}</p>
+    <p><b>Segments:</b> ${segs.length}</p>
+  `;
 }
 
-function filterLines() {
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  if (!q) {
-    currentLines = allLines;
-    document.getElementById('searchCount').textContent = '';
-  } else {
-    currentLines = allLines.filter(l => l.text.toLowerCase().includes(q));
-    document.getElementById('searchCount').textContent = currentLines.length + ' found';
-  }
-  renderLines(currentLines);
+// Search lyrics
+let searchTimer;
+function searchLyrics() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    const q = document.getElementById('search-q').value.trim();
+    const box = document.getElementById('search-results');
+    if (!q || q.length < 2 || !currentJobId) { box.innerHTML = ''; highlightClear(); return; }
+    try {
+      const res = await fetch(`${API}/api/job/${currentJobId}/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      highlightClear();
+      if (!data.results?.length) { box.innerHTML = '<p style="color:var(--text2)">No matches</p>'; return; }
+      box.innerHTML = data.results.map(r => `
+        <div class="result">
+          <div class="ctx">${escHtml(r.context_before)}</div>
+          <div><b>${escHtml(r.text)}</b></div>
+          <div class="ctx">${escHtml(r.context_after)}</div>
+        </div>
+      `).join('');
+      data.results.forEach(r => {
+        const el = document.querySelector(`.line[data-idx="${r.index}"]`);
+        if (el) el.classList.add('highlight');
+      });
+    } catch {}
+  }, 300);
+}
+function highlightClear() { document.querySelectorAll('.line.highlight').forEach(e => e.classList.remove('highlight')); }
+
+// Export
+async function exportLyrics() {
+  if (!currentJobId) return toast('No job selected');
+  const fmt = document.getElementById('export-fmt').value;
+  try {
+    const res = await fetch(`${API}/api/job/${currentJobId}/export/${fmt}`);
+    if (!res.ok) return toast('Export failed');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `wulira-lyrics.${fmt}`;
+    a.click();
+    toast(`Exported as ${fmt.toUpperCase()}`);
+  } catch { toast('Export error'); }
 }
 
-// ── Exports ────────────────────────────────────────────────
-function copyAll() {
-  const text = allLines.map(l => `[${fmt(l.start)}]  ${l.text}`).join('\n');
-  navigator.clipboard.writeText(text)
-    .then(() => toast('Copied to clipboard'))
-    .catch(() => toast('Could not copy — please select manually'));
+// Delete job
+async function deleteJob(jobId) {
+  try {
+    await fetch(`${API}/api/job/${jobId}`, { method: 'DELETE' });
+    toast('Job deleted');
+    loadJobs();
+  } catch { toast('Delete failed'); }
 }
 
-function exportTxt() {
-  const header = [
-    'Title    : ' + (videoMeta.title || ''),
-    'Language : ' + (videoMeta.language_detected || ''),
-    'Lines    : ' + allLines.length,
-    '-'.repeat(60),
-  ].join('\n');
-  const body = allLines.map(l => `[${fmt(l.start)}]  ${l.text}`).join('\n');
-  download('wulira-transcript.txt', header + '\n' + body);
-  toast('Downloaded .txt file');
+// Translate
+async function translateLyrics() {
+  if (!currentJobId || !currentJob) return toast('Load a job first');
+  const to = document.getElementById('translate-to').value;
+  const from = currentJob.language_code || 'en';
+  document.getElementById('translate-status').textContent = 'Translating...';
+  try {
+    const res = await fetch(`${API}/api/job/${currentJobId}/translate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ from_code: from, to_code: to }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('translate-status').textContent = data.detail || 'Translation failed';
+      return;
+    }
+    document.getElementById('translate-status').textContent = `Translated ${from} → ${to}`;
+    const segs = data.translated || [];
+    document.getElementById('translate-output').innerHTML = segs.map(s => `
+      <div class="translated-line">
+        <div class="orig">${escHtml(s.original_text || '')}</div>
+        <div class="trans">${escHtml(s.text || '')}</div>
+      </div>
+    `).join('');
+  } catch { document.getElementById('translate-status').textContent = 'Translation error'; }
 }
 
-function exportSrt() {
-  const srt = allLines.map((l, i) => {
-    const s = fmtSrt(l.start), e = fmtSrt(l.end || l.start + 3);
-    return `${i+1}\n${s} --> ${e}\n${l.text}\n`;
-  }).join('\n');
-  download('wulira-transcript.srt', srt);
-  toast('Downloaded .srt file');
+// Stats
+async function loadStats() {
+  try {
+    const res = await fetch(`${API}/api/stats`);
+    const d = await res.json();
+    document.getElementById('api-stats').innerHTML = `
+      <div class="stat"><div class="val">${d.total_jobs||0}</div><div class="label">Total Jobs</div></div>
+      <div class="stat"><div class="val">${d.processing||0}</div><div class="label">Processing</div></div>
+      <div class="stat"><div class="val">${d.done||0}</div><div class="label">Completed</div></div>
+      <div class="stat"><div class="val">${d.errors||0}</div><div class="label">Errors</div></div>
+      <div class="stat"><div class="val">${(d.models_cached||[]).length}</div><div class="label">Models Cached</div></div>
+      <div class="stat"><div class="val">${d.environment||'?'}</div><div class="label">Environment</div></div>
+    `;
+  } catch {}
 }
 
-function fmtSrt(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.floor(sec % 60);
-  const ms = Math.round((sec - Math.floor(sec)) * 1000);
-  return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':') + ',' + String(ms).padStart(3,'0');
+async function loadLyricsStats(jobId) {
+  try {
+    const res = await fetch(`${API}/api/job/${jobId}/lyrics-stats`);
+    if (!res.ok) return;
+    const d = await res.json();
+    const s = d.statistics || {};
+    document.getElementById('lyrics-stats-card').style.display = 'block';
+    document.getElementById('lyrics-stats').innerHTML = `
+      <div class="stat"><div class="val">${s.total_words||0}</div><div class="label">Words</div></div>
+      <div class="stat"><div class="val">${s.unique_words||0}</div><div class="label">Unique</div></div>
+      <div class="stat"><div class="val">${s.words_per_minute||0}</div><div class="label">WPM</div></div>
+      <div class="stat"><div class="val">${s.vocabulary_richness||0}</div><div class="label">Richness</div></div>
+      <div class="stat"><div class="val">${s.chorus_percentage||0}%</div><div class="label">Chorus</div></div>
+      <div class="stat"><div class="val">${s.total_segments||0}</div><div class="label">Segments</div></div>
+    `;
+  } catch {}
 }
 
-function download(filename, text) {
-  const a = document.createElement('a');
-  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
-  a.download = filename;
-  a.click();
-}
+// Helpers
+function fmtTime(sec) { const m=Math.floor(sec/60),s=Math.floor(sec%60); return `${m}:${String(s).padStart(2,'0')}`; }
+function escHtml(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+// Init
+loadJobs();
 </script>
 </body>
 </html>

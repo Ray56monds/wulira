@@ -19,6 +19,26 @@ env/
 .DS_Store
 Thumbs.db
 
+# Configuration & Secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+
+# Audio downloads
+audio.*
+*.mp3
+*.wav
+*.m4a
+
 # Whisper models (large downloads)
 *.pt
 
