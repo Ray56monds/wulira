@@ -182,6 +182,20 @@ wscat -c ws://localhost:8000/ws/job/abc123
 
 ## Deploy
 
+### Hugging Face Spaces (recommended — free, 16GB RAM)
+
+1. Go to [huggingface.co/new-space](https://huggingface.co/new-space)
+2. Name: `wulira`, SDK: **Docker**, Hardware: **CPU Basic (free)**
+3. Clone the space and copy your files in:
+```bash
+git clone https://huggingface.co/spaces/YOUR_USERNAME/wulira hf-wulira
+cd hf-wulira
+cp ../wulira/Dockerfile.hf ./Dockerfile
+cp -r ../wulira/api ../wulira/static ../wulira/wulira.py ../wulira/requirements.txt .
+git add -A && git commit -m "deploy" && git push
+```
+4. It builds and runs at `https://YOUR_USERNAME-wulira.hf.space`
+
 ### Railway (recommended — easiest)
 
 1. Push this repo to GitHub
