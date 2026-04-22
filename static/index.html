@@ -60,6 +60,16 @@
       <button class="btn btn-primary" id="submit-btn" onclick="submitJob()">🎤 Extract</button>
     </div>
 
+    <!-- File upload alternative -->
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <p style="font-size:.78rem;color:var(--text2);margin-bottom:8px">📤 Or upload audio directly (MP3, WAV, M4A — bypasses YouTube blocks)</p>
+      <div class="row">
+        <input type="file" id="audio-file" accept="audio/*" style="font-size:.82rem">
+        <input type="text" id="upload-title" placeholder="Song title (optional)" style="max-width:200px">
+        <button class="btn btn-outline" id="upload-btn" onclick="uploadAudio()">⬆ Upload & Extract</button>
+      </div>
+    </div>
+
     <!-- Progress + Activity Log -->
     <div id="progress-wrap" style="display:none">
       <div class="progress-wrap">

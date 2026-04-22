@@ -1,1 +1,1 @@
-from api.models.schemas import TranscribeRequest, BatchTranscribeRequest, TranslateRequest
+from api.models.schemas import TranscribeRequest, BatchTranscribeRequest, TranslateRequest, AudioTranscribeRequest

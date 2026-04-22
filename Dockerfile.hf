@@ -7,13 +7,19 @@ RUN apt-get update && \
 RUN useradd -m -u 1000 user
 WORKDIR /app
 
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir deep-translator
+    pip install --no-cache-dir deep-translator && \
+    pip install --no-cache-dir --upgrade yt-dlp && \
+    pip install --no-cache-dir pytubefix gallery-dl && \
+    pip install --no-cache-dir bgutil-ytdlp-pot-provider
 
-# Pre-download base + medium models (HF has 16GB RAM)
-RUN python -c "import whisper; whisper.load_model('base'); whisper.load_model('medium')"
+RUN python -c "import whisper; whisper.load_model('base')"
 
+# This ARG busts the cache for COPY on every push
+ARG CACHEBUST=1
 COPY . .
 RUN chown -R user:user /app
 

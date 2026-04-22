@@ -32,56 +32,39 @@ export async function getBlob(path) {
   return res.blob();
 }
 
-// Poll job status + log (fallback when WebSocket fails)
-export function pollJob(jobId, onUpdate, intervalMs = 2000) {
+// Watch job via polling (reliable on all platforms including HF Spaces)
+export function watchJob(jobId, onUpdate) {
   let active = true;
+  let prevLogLen = 0;
+
   const poll = async () => {
     if (!active) return;
     try {
-      const data = await get(`/api/job/${jobId}/log`);
-      onUpdate(data);
-      if (data.status === 'done' || data.status === 'error') {
+      const data = await get(`/api/job/${jobId}`);
+      const log = data.log || [];
+      const status = data.status || 'unknown';
+
+      // Map status to progress percentage
+      const progressMap = { queued: 5, processing: 15, downloading: 25, detecting_language: 50, transcribing: 70, done: 100, error: 0 };
+      let progress = progressMap[status] || 15;
+      // If we have log entries, estimate progress from them
+      if (log.length > prevLogLen) {
+        progress = Math.min(90, 10 + log.length * 12);
+      }
+      if (status === 'done') progress = 100;
+
+      onUpdate({ status, progress, log, newEntries: log.slice(prevLogLen), source: 'poll' });
+      prevLogLen = log.length;
+
+      if (status === 'done' || status === 'error') {
         active = false;
         return;
       }
     } catch {}
-    if (active) setTimeout(poll, intervalMs);
+    if (active) setTimeout(poll, 1500);
   };
+
+  // Start immediately
   poll();
   return () => { active = false; };
-}
-
-// Try WebSocket, fall back to polling
-export function watchJob(jobId, onUpdate) {
-  let wsOk = false;
-  let stopPoll = null;
-
-  try {
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${proto}//${location.host}/ws/job/${jobId}`);
-
-    ws.onopen = () => { wsOk = true; };
-    ws.onmessage = (e) => {
-      const d = JSON.parse(e.data);
-      onUpdate({ status: d.stage, progress: d.progress || 0, log: [], source: 'ws' });
-      if (d.stage === 'done' || d.stage === 'error') ws.close();
-    };
-    ws.onerror = () => {
-      if (!wsOk) startPolling();
-    };
-    ws.onclose = () => {
-      if (!wsOk) startPolling();
-    };
-  } catch {
-    startPolling();
-  }
-
-  function startPolling() {
-    if (stopPoll) return;
-    stopPoll = pollJob(jobId, (data) => {
-      onUpdate({ ...data, source: 'poll' });
-    });
-  }
-
-  return () => { if (stopPoll) stopPoll(); };
 }

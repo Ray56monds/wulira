@@ -12,6 +12,49 @@ document.addEventListener('DOMContentLoaded', () => {
   loadJobs();
 });
 
+// ── Upload audio file ──
+window.uploadAudio = async function() {
+  const fileInput = document.getElementById('audio-file');
+  const file = fileInput.files?.[0];
+  if (!file) return toast('Select an audio file');
+
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Uploading...';
+
+  const logBox = document.getElementById('activity-log');
+  const progressWrap = document.getElementById('progress-wrap');
+  logBox.innerHTML = '';
+  progressWrap.style.display = 'block';
+  addLog('Uploading audio file...');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('model', document.getElementById('model-select').value);
+    formData.append('language', document.getElementById('lang-select').value || '');
+    formData.append('title', document.getElementById('upload-title').value || file.name);
+
+    const res = await fetch(`${window.location.origin}/api/transcribe-audio`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+    currentJobId = data.job_id;
+    addLog(`Job queued: ${data.job_id.slice(0, 8)}...`);
+    pulse();
+
+    watchJob(data.job_id, (update) => handleJobUpdate(update, btn, logBox));
+  } catch (e) {
+    addLog(`Error: ${e.message}`, 'error');
+    btn.disabled = false;
+    btn.textContent = '⬆ Upload & Extract';
+    toast(e.message);
+  }
+};
+
 // ── Navigation ──
 function initNav() {
   document.querySelectorAll('nav button').forEach(btn => {
@@ -70,48 +113,8 @@ window.submitJob = async function() {
     addLog(`Job queued: ${data.job_id.slice(0, 8)}...`);
     pulse();
 
-    // Watch with WS + polling fallback
-    watchJob(data.job_id, (update) => {
-      const stages = {
-        queued: 'Waiting in queue...',
-        processing: 'Processing...',
-        downloading: '⬇ Downloading audio from YouTube...',
-        detecting_language: '🔍 Detecting language...',
-        transcribing: '🎵 Extracting lyrics (this takes a minute)...',
-        done: '✓ Lyrics extracted!',
-        error: '✗ Failed',
-      };
-
-      // Update progress bar
-      const pct = update.progress || (update.status === 'done' ? 100 : update.status === 'error' ? 0 : 15);
-      document.getElementById('progress-bar').style.width = pct + '%';
-      document.getElementById('progress-text').textContent = stages[update.status] || update.status;
-      setEnergy(pct / 100);
-
-      // Append log entries from polling
-      if (update.log && update.source === 'poll') {
-        logBox.innerHTML = '';
-        update.log.forEach(msg => addLog(msg, update.status === 'error' ? 'error' : ''));
-      } else if (update.source === 'ws') {
-        addLog(stages[update.status] || update.status, update.status === 'done' ? 'done' : update.status === 'error' ? 'error' : 'active');
-      }
-
-      if (update.status === 'done') {
-        pulse();
-        btn.disabled = false;
-        btn.textContent = '🎤 Extract';
-        toast('Lyrics ready!');
-        setTimeout(() => {
-          loadJob(currentJobId);
-          switchTo('p-viewer');
-        }, 800);
-      }
-      if (update.status === 'error') {
-        btn.disabled = false;
-        btn.textContent = '🎤 Extract';
-        toast('Job failed — check the log');
-      }
-    });
+    // Watch with polling
+    watchJob(data.job_id, (update) => handleJobUpdate(update, btn, logBox));
 
   } catch (e) {
     addLog(`Error: ${e.message}`, 'error');
@@ -120,6 +123,49 @@ window.submitJob = async function() {
     toast(e.message);
   }
 };
+
+function handleJobUpdate(update, btn, logBox) {
+  const stages = {
+    queued: 'Waiting in queue...',
+    processing: 'Processing...',
+    downloading: 'Downloading audio...',
+    detecting_language: 'Detecting language...',
+    transcribing: 'Extracting lyrics...',
+    done: 'Lyrics extracted!',
+    error: 'Failed',
+  };
+
+  document.getElementById('progress-bar').style.width = update.progress + '%';
+  document.getElementById('progress-text').textContent = stages[update.status] || update.status;
+  setEnergy(update.progress / 100);
+
+  if (update.newEntries && update.newEntries.length > 0) {
+    update.newEntries.forEach(msg => {
+      const cls = update.status === 'error' ? 'error' : update.status === 'done' ? 'done' : 'active';
+      addLog(msg, cls);
+    });
+  }
+
+  if (update.status === 'done') {
+    pulse();
+    btn.disabled = false;
+    btn.textContent = '🎤 Extract';
+    document.getElementById('upload-btn').disabled = false;
+    document.getElementById('upload-btn').textContent = '⬆ Upload & Extract';
+    toast('Lyrics ready!');
+    setTimeout(() => {
+      loadJob(currentJobId);
+      switchTo('p-viewer');
+    }, 800);
+  }
+  if (update.status === 'error') {
+    btn.disabled = false;
+    btn.textContent = '🎤 Extract';
+    document.getElementById('upload-btn').disabled = false;
+    document.getElementById('upload-btn').textContent = '⬆ Upload & Extract';
+    toast('Job failed — check the log');
+  }
+}
 
 function addLog(msg, cls = '') {
   const box = document.getElementById('activity-log');

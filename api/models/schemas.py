@@ -38,6 +38,13 @@ class TranscribeRequest(BaseModel):
         return v
 
 
+class AudioTranscribeRequest(BaseModel):
+    """For direct audio file upload (bypasses YouTube download)"""
+    language: Optional[str] = None
+    model: str = "base"
+    timestamps: bool = True
+
+
 class BatchTranscribeRequest(BaseModel):
     urls: list[str]
     language: Optional[str] = None

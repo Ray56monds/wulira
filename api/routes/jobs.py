@@ -1,11 +1,13 @@
 """Routes — Job management endpoints"""
 
 import uuid
+import os
+import tempfile
 from datetime import datetime
 from typing import Any
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
 from api.models.schemas import TranscribeRequest, BatchTranscribeRequest, TranslateRequest
-from api.services.transcription import run_transcription, model_cache
+from api.services.transcription import run_transcription, run_audio_transcription, model_cache
 from api.lyrics import LyricsProcessor
 from api.storage import JobStore
 from fastapi.responses import PlainTextResponse
@@ -30,6 +32,26 @@ def create_router(store: JobStore, notify_fn: Any, max_duration: int) -> APIRout
         job_id = str(uuid.uuid4())
         store.save(job_id, {"job_id": job_id, "status": "queued", "created_at": datetime.now().isoformat(), "log": ["Queued"]})
         bg.add_task(run_transcription, job_id, req.url, req.language, req.model, req.timestamps, store, notify_fn, max_duration)
+        return {"job_id": job_id, "status": "queued"}
+
+    @r.post("/transcribe-audio")
+    async def transcribe_audio(
+        bg: BackgroundTasks,
+        file: UploadFile = File(...),
+        model: str = Form("base"),
+        language: str = Form(""),
+        title: str = Form("Uploaded Audio"),
+    ):
+        """Upload audio file directly — bypasses YouTube download entirely."""
+        job_id = str(uuid.uuid4())
+        # Save uploaded file to temp
+        tmp_dir = tempfile.mkdtemp()
+        audio_path = os.path.join(tmp_dir, "audio.mp3")
+        with open(audio_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        store.save(job_id, {"job_id": job_id, "status": "queued", "created_at": datetime.now().isoformat(), "log": ["Audio uploaded"]})
+        bg.add_task(run_audio_transcription, job_id, audio_path, tmp_dir, language or None, model, True, title, store, notify_fn)
         return {"job_id": job_id, "status": "queued"}
 
     @r.get("/job/{job_id}")

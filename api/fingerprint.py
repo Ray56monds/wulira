@@ -44,6 +44,8 @@ class CaptionExtractor:
             "writesubtitles": True,
             "writeautomaticsub": True,
             "subtitlesformat": "json3",
+            "extractor_args": {"youtube": {"player_client": ["web", "android"]}},
+            "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"},
         }
         if language:
             ydl_opts["subtitleslangs"] = [language, f"{language}-*", "en", "en-*"]
@@ -126,7 +128,7 @@ class SongIdentifier:
             return None
 
         try:
-            with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True}) as ydl:
+            with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "extractor_args": {"youtube": {"player_client": ["web", "android"]}}, "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"}}) as ydl:
                 info = ydl.extract_info(url, download=False)
                 title = info.get("title", "")
                 artist = info.get("artist") or info.get("uploader") or info.get("channel", "")
