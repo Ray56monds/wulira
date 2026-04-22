@@ -20,6 +20,79 @@ LANG_NAMES = {
 
 model_cache: dict[str, Any] = {}
 
+# Whisper supported languages (subset)
+WHISPER_LANGS = {
+    "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr", "pl", "ca",
+    "nl", "ar", "sv", "it", "id", "hi", "fi", "vi", "he", "uk", "el", "ms",
+    "cs", "ro", "da", "hu", "ta", "no", "th", "ur", "hr", "bg", "lt", "la",
+    "mi", "ml", "cy", "sk", "te", "fa", "lv", "bn", "sr", "az", "sl", "kn",
+    "et", "mk", "br", "eu", "is", "hy", "ne", "mn", "bs", "kk", "sq", "sw",
+    "gl", "mr", "pa", "si", "km", "sn", "yo", "so", "af", "oc", "ka", "be",
+    "tg", "sd", "gu", "am", "yi", "lo", "uz", "fo", "ht", "ps", "tk", "nn",
+    "mt", "sa", "lb", "my", "bo", "tl", "mg", "as", "tt", "ha", "ba", "jw",
+    "su", "ln", "rw",
+}
+
+# Languages that need MMS instead of Whisper
+MMS_LANGS = {"lg", "nyn", "ach", "luo", "teo", "cgg"}
+
+
+def _transcribe_mms(audio_path: str, language: str, log_fn: Any) -> list[dict[str, Any]]:
+    """Transcribe using Meta's MMS model (supports 1107 languages incl. Luganda)."""
+    try:
+        import torch
+        from transformers import Wav2Vec2ForCTC, AutoProcessor
+        import librosa
+
+        model_id = "facebook/mms-1b-all"
+        cache_key = f"mms_{model_id}"
+
+        if cache_key not in model_cache:
+            log_fn("Loading MMS model (first time takes ~2 min)...")
+            model_cache[f"{cache_key}_proc"] = AutoProcessor.from_pretrained(model_id)
+            model_cache[cache_key] = Wav2Vec2ForCTC.from_pretrained(model_id)
+        
+        processor = model_cache[f"{cache_key}_proc"]
+        model = model_cache[cache_key]
+
+        # Set target language
+        processor.tokenizer.set_target_lang(language)
+        model.load_adapter(language)
+
+        log_fn(f"MMS: transcribing in {lang_display(language)}...")
+
+        # Load audio in chunks for timestamps
+        audio_data, sr = librosa.load(audio_path, sr=16000)
+        duration = len(audio_data) / sr
+
+        # Process in 30-second chunks for pseudo-timestamps
+        chunk_sec = 30
+        chunk_size = chunk_sec * sr
+        segments = []
+
+        for i in range(0, len(audio_data), chunk_size):
+            chunk = audio_data[i:i + chunk_size]
+            if len(chunk) < sr:  # skip chunks < 1 second
+                continue
+
+            inputs = processor(chunk, sampling_rate=16000, return_tensors="pt")
+            with torch.no_grad():
+                outputs = model(**inputs).logits
+            ids = torch.argmax(outputs, dim=-1)[0]
+            text = processor.decode(ids).strip()
+
+            if text:
+                start = round(i / sr, 2)
+                end = round(min((i + chunk_size) / sr, duration), 2)
+                segments.append({"start": start, "end": end, "text": text})
+
+        log_fn(f"MMS: {len(segments)} segments transcribed")
+        return segments
+
+    except Exception as e:
+        log_fn(f"MMS failed: {str(e)[:80]}")
+        return []
+
 
 def lang_display(code: str | None) -> str:
     if not code:
@@ -330,21 +403,33 @@ async def run_audio_transcription(
         top5 = [{"code": c, "name": lang_display(c), "confidence": round(p * 100, 1)} for c, p in ranked[:5]]
         log(f"Detected: {lang_display(detected)} ({confidence}%)")
 
-        # Transcribe
+        # Transcribe — use MMS for Luganda and other unsupported Whisper languages
         await notify_fn(job_id, "transcribing", 60)
         lang_to_use = language or detected
         log(f"Transcribing in {lang_display(lang_to_use)}...")
 
-        kwargs: dict[str, Any] = {"verbose": False}
-        if lang_to_use:
-            kwargs["language"] = lang_to_use
-        raw = model.transcribe(audio_path, **kwargs)
-        segments = [
-            {"start": round(s["start"], 2), "end": round(s["end"], 2), "text": s["text"].strip()}
-            for s in raw.get("segments", [])
-            if s["text"].strip()
-        ]
-        log(f"Transcribed: {len(segments)} segments")
+        if lang_to_use in MMS_LANGS:
+            log(f"Using Meta MMS model (native {lang_display(lang_to_use)} support)")
+            segments = _transcribe_mms(audio_path, lang_to_use, log)
+            source = "mms"
+        elif lang_to_use in WHISPER_LANGS:
+            kwargs: dict[str, Any] = {"verbose": False, "language": lang_to_use}
+            raw = model.transcribe(audio_path, **kwargs)
+            segments = [
+                {"start": round(s["start"], 2), "end": round(s["end"], 2), "text": s["text"].strip()}
+                for s in raw.get("segments", []) if s["text"].strip()
+            ]
+            source = "whisper"
+        else:
+            # Unknown language — let Whisper auto-detect
+            raw = model.transcribe(audio_path, verbose=False)
+            segments = [
+                {"start": round(s["start"], 2), "end": round(s["end"], 2), "text": s["text"].strip()}
+                for s in raw.get("segments", []) if s["text"].strip()
+            ]
+            source = "whisper"
+
+        log(f"Transcribed: {len(segments)} segments (via {source})")
 
         if not timestamps:
             segments = [{"text": s["text"]} for s in segments]
@@ -359,7 +444,7 @@ async def run_audio_transcription(
             "language_top5": top5,
             "timestamps": timestamps,
             "transcript": segments,
-            "lyrics_source": "upload",
+            "lyrics_source": source,
             "song_metadata": {},
             **meta,
         })

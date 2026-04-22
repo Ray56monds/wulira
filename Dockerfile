@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir deep-translator && \
     pip install --no-cache-dir --upgrade yt-dlp && \
     pip install --no-cache-dir pytubefix gallery-dl && \
-    pip install --no-cache-dir bgutil-ytdlp-pot-provider
+    pip install --no-cache-dir bgutil-ytdlp-pot-provider && \
+    pip install --no-cache-dir transformers librosa
 
 RUN python -c "import whisper; whisper.load_model('base')"
 
